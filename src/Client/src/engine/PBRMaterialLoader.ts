@@ -167,26 +167,55 @@ export class PBRMaterialLoader {
    * Load a texture through the server proxy endpoint.
    * The proxy handles grid authentication and caching.
    */
-  private loadTexture(textureId: string): Promise<THREE.Texture> {
+  private async loadTexture(textureId: string): Promise<THREE.Texture> {
     const cached = materialCache.get(`tex:${textureId}`);
     if (cached instanceof THREE.Texture) {
-      return Promise.resolve(cached);
+      return cached;
     }
 
-    return new Promise<THREE.Texture>((resolve, reject) => {
-      this.textureLoader.load(
-        `${this.baseUrl}/api/textures/${textureId}`,
-        (texture) => {
-          texture.colorSpace = THREE.SRGBColorSpace;
-          texture.wrapS = THREE.RepeatWrapping;
-          texture.wrapT = THREE.RepeatWrapping;
-          materialCache.set(`tex:${textureId}`, texture);
-          resolve(texture);
-        },
-        undefined,
-        reject
-      );
-    });
+    try {
+      // Use fetch with auth header (THREE.TextureLoader can't send headers)
+      const res = await fetch(`${this.baseUrl}/api/textures/${textureId}`, {
+        headers: { Authorization: `Bearer ${this.authToken}` },
+      });
+
+      if (!res.ok) throw new Error(`Texture ${textureId}: ${res.status}`);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      // Load via Image element
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load texture image ${textureId}`));
+        img.src = url;
+      });
+
+      const texture = new THREE.Texture(image);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.needsUpdate = true;
+      materialCache.set(`tex:${textureId}`, texture);
+
+      // Revoke blob URL after texture is uploaded to GPU
+      URL.revokeObjectURL(url);
+
+      return texture;
+    } catch (err) {
+      console.warn(`[Material] Failed to load texture ${textureId}:`, err);
+      // Return a default white texture
+      const canvas = document.createElement('canvas');
+      canvas.width = 4;
+      canvas.height = 4;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#cccccc';
+      ctx.fillRect(0, 0, 4, 4);
+      const tex = new THREE.CanvasTexture(canvas);
+      materialCache.set(`tex:${textureId}`, tex);
+      return tex;
+    }
   }
 
   /**

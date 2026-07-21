@@ -3,6 +3,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using OpenMetaverse;
+using OpenMetaverse.Assets;
 using IGrid.Server.Services;
 
 namespace IGrid.Server.Hubs;
@@ -94,6 +95,24 @@ public class ViewerHub : Hub
                     PathTwistBegin = prim.PrimData.PathTwistBegin,
                     PathRevolutions = prim.PrimData.PathRevolutions,
                 });
+
+                // Fetch mesh data for mesh prims (PrimType 9 = Mesh)
+                if (prim.Type == PrimType.Mesh && prim.Sculpt?.SculptTexture != UUID.Zero)
+                {
+                    try
+                    {
+                        var meshData = await RequestMeshAsync(client, prim.Sculpt.SculptTexture);
+                        if (meshData != null && meshData.Length > 0)
+                        {
+                            await caller.SendAsync("MeshData", new
+                            {
+                                Id = prim.ID.ToString(),
+                                Data = Convert.ToBase64String(meshData)
+                            });
+                        }
+                    }
+                    catch { }
+                }
             }
             catch (Exception ex) { Console.WriteLine($"[ViewerHub] ObjectUpdate error: {ex.Message}"); }
         };
@@ -239,5 +258,19 @@ public class ViewerHub : Hub
         foreach (var session in sessions)
             await _grid.DisconnectAvatarAsync(session.AvatarId);
         await base.OnDisconnectedAsync(exception);
+    }
+
+    private Task<byte[]?> RequestMeshAsync(GridClient client, UUID meshId)
+    {
+        var tcs = new TaskCompletionSource<byte[]?>();
+        client.Assets.RequestMesh(meshId,
+            (bool success, AssetMesh assetMesh) =>
+            {
+                if (success && assetMesh?.AssetData != null && assetMesh.AssetData.Length > 0)
+                    tcs.TrySetResult(assetMesh.AssetData);
+                else
+                    tcs.TrySetResult(null);
+            });
+        return tcs.Task;
     }
 }

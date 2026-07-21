@@ -256,6 +256,9 @@ connectBtn.addEventListener('click', async () => {
     },
     (from, message, fromId) => {
       addIMMessage(from, message, fromId);
+    },
+    (x, y, heights) => {
+      minimap?.updatePatch(x, y, heights);
     }
   );
 

@@ -34,6 +34,7 @@ export class GridClient {
     private onTeleportStarted?: (destination: string, gridUri?: string, region?: string) => void,
     private onFriendUpdate?: (id: string, name: string, online: boolean) => void,
     private onIM?: (from: string, message: string, fromId?: string) => void,
+    private onTerrainPatch?: (x: number, y: number, heights: Float32Array) => void,
   ) {
     this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
     this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
@@ -98,7 +99,9 @@ export class GridClient {
 
     hub.on('TerrainPatch', (data: any) => {
       if (data.heights) {
-        this.terrain.updatePatch(data.x, data.y, new Float32Array(data.heights));
+        const heights = new Float32Array(data.heights);
+        this.terrain.updatePatch(data.x, data.y, heights);
+        this.onTerrainPatch?.(data.x, data.y, heights);
       }
     });
 
