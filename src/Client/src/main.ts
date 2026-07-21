@@ -295,6 +295,12 @@ function switchIM(friendId: string, friendName: string) {
   imTitle.textContent = friendName;
   imWindow.style.display = 'block';
   friendsList.style.display = 'none';
+  renderIMMessages(conv);
+  imInput.focus();
+  renderFriends();
+}
+
+function renderIMMessages(conv: IMConvo) {
   imMessages.innerHTML = '';
   for (const msg of conv.messages) {
     const time = msg.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -304,8 +310,6 @@ function switchIM(friendId: string, friendName: string) {
     imMessages.appendChild(line);
   }
   imMessages.scrollTop = imMessages.scrollHeight;
-  imInput.focus();
-  renderFriends();
 }
 
 imSend.addEventListener('click', async () => {
@@ -326,7 +330,16 @@ imSend.addEventListener('click', async () => {
 });
 
 imInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); imSend.click(); } });
+// Close IM + clear
 document.getElementById('im-header')!.addEventListener('click', () => { imWindow.style.display = 'none'; activeConvoId = null; });
+document.getElementById('im-clear')!.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (!activeConvoId || !gridClient) return;
+  if (!confirm('Clear this conversation?')) return;
+  await gridClient.clearIMHistory(activeConvoId);
+  const conv = convos.get(activeConvoId);
+  if (conv) { conv.messages = []; renderIMMessages(conv); }
+});
 
 function addIMMessage(from: string, message: string, fromId?: string) {
   const senderId = fromId || from;

@@ -224,6 +224,10 @@ export class GridClient {
     await this.connection.invoke('SendIM', targetId, message);
   }
 
+  async clearIMHistory(otherId?: string): Promise<void> {
+    await this.connection.invoke('ClearIMHistory', otherId || null);
+  }
+
   /**
    * Send a chat message to the current region.
    */

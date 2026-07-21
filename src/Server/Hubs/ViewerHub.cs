@@ -26,6 +26,15 @@ public class ViewerHub : Hub
     private int UserId => int.Parse(
         Context.User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
 
+    /// <summary>
+    /// Get user's password for IM encryption (from JWT claim or DB).
+    /// </summary>
+    private async Task<string> GetUserPasswordAsync()
+    {
+        var user = await _db.Users.FindAsync(UserId);
+        return user?.PasswordHash ?? "fallback-key";
+    }
+
     public async Task ConnectAvatar(int avatarId)
     {
         Console.WriteLine($"[ViewerHub] ConnectAvatar: avatarId={avatarId}");
@@ -35,6 +44,7 @@ public class ViewerHub : Hub
         var caller = Clients.Caller;
         var client = session.Client;
         var sentMeshes = new ConcurrentDictionary<string, bool>();
+        var userPassword = await GetUserPasswordAsync();
 
         // Object updates
         client.Objects.ObjectUpdate += async (_, e) =>
@@ -74,13 +84,12 @@ public class ViewerHub : Hub
 
                 if (prim.Type == PrimType.Mesh && prim.Sculpt?.SculptTexture != UUID.Zero)
                 {
-                    var meshId = prim.Sculpt.SculptTexture;
-                    var meshKey = meshId.ToString();
+                    var meshKey = prim.Sculpt.SculptTexture.ToString();
                     if (sentMeshes.TryAdd(meshKey, true))
                     {
                         try
                         {
-                            var meshData = await RequestMeshAsync(client, meshId);
+                            var meshData = await RequestMeshAsync(client, prim.Sculpt.SculptTexture);
                             if (meshData != null && meshData.Length > 0)
                                 await caller.SendAsync("MeshData", new { Id = prim.ID.ToString(), Data = Convert.ToBase64String(meshData) });
                         }
@@ -101,10 +110,7 @@ public class ViewerHub : Hub
         { try { await caller.SendAsync("TerrainPatch", new { X = e.X, Y = e.Y, PatchSize = e.PatchSize, Heights = e.HeightMap }); } catch { } };
 
         client.Self.ChatFromSimulator += async (_, e) =>
-        {
-            try { await caller.SendAsync("ChatMessage", new { From = e.FromName ?? "Unknown", Message = e.Message, Type = (int)e.Type }); }
-            catch { }
-        };
+        { try { await caller.SendAsync("ChatMessage", new { From = e.FromName ?? "Unknown", Message = e.Message, Type = (int)e.Type }); } catch { } };
 
         client.Parcels.ParcelProperties += async (_, e) =>
         {
@@ -112,7 +118,7 @@ public class ViewerHub : Hub
             {
                 var parcel = client.Parcels.CurrentParcel;
                 if (parcel != null)
-                    await caller.SendAsync("ParcelInfo", new { Name = parcel.Name ?? "Unnamed", Owner = parcel.OwnerID.ToString(), Area = parcel.Area, SalePrice = parcel.SalePrice });
+                    await caller.SendAsync("ParcelInfo", new { Name = parcel.Name ?? "Unnamed", Area = parcel.Area, SalePrice = parcel.SalePrice });
             }
             catch { }
         };
@@ -120,7 +126,7 @@ public class ViewerHub : Hub
         client.Self.MoneyBalance += async (_, e) =>
         { try { await caller.SendAsync("BalanceUpdate", new { Balance = e.Balance }); } catch { } };
 
-        // IM receive — SAVE TO DB
+        // IM receive — ENCRYPT + SAVE
         client.Self.IM += async (_, e) =>
         {
             try
@@ -134,17 +140,15 @@ public class ViewerHub : Hub
                 var fromId = im.FromAgentID.ToString();
                 var msg = im.Message ?? "";
 
-                // Save to DB
+                // Encrypt message
+                var encryptedMsg = IMEncryption.Encrypt(msg, userPassword, UserId);
+
                 try
                 {
                     _db.IMMessages.Add(new IMMessage
                     {
-                        UserId = UserId,
-                        OtherId = fromId,
-                        OtherName = fromName,
-                        Message = msg,
-                        FromMe = false,
-                        Timestamp = DateTime.UtcNow
+                        UserId = UserId, OtherId = fromId, OtherName = fromName,
+                        Message = encryptedMsg, FromMe = false, Timestamp = DateTime.UtcNow
                     });
                     await _db.SaveChangesAsync();
                 }
@@ -160,21 +164,20 @@ public class ViewerHub : Hub
         client.Friends.FriendOffline += async (_, e) =>
         { try { await caller.SendAsync("FriendUpdate", new { Id = e.Friend.UUID.ToString(), Name = e.Friend.Name ?? "Unknown", Online = false }); } catch { } };
 
-        // Send connected
+        // Connected
         var regionName = client.Network.CurrentSim?.Name ?? "Unknown Region";
         var regionHandle = client.Network.CurrentSim?.Handle ?? 0;
         var regionX = (int)((regionHandle >> 32) & 0xFFFFFFFF);
         var regionY = (int)(regionHandle & 0xFFFFFFFF);
-        var balance = client.Self.Balance;
         await caller.SendAsync("AvatarConnected", new
         {
             AvatarId = avatarId, FirstName = client.Self.Name ?? "Unknown",
             RegionName = regionName, RegionX = regionX, RegionY = regionY,
-            Balance = balance, CurrencySymbol = "Doritos",
+            Balance = client.Self.Balance, CurrencySymbol = "Doritos",
             Position = new { X = client.Self.SimPosition.X, Y = client.Self.SimPosition.Y, Z = client.Self.SimPosition.Z }
         });
 
-        // Load IM history from DB
+        // Load IM history — DECRYPT
         try
         {
             var history = await _db.IMMessages
@@ -182,22 +185,25 @@ public class ViewerHub : Hub
                 .OrderBy(m => m.Timestamp)
                 .ToListAsync();
 
-            Console.WriteLine($"[ViewerHub] Loading {history.Count} IM messages from DB");
+            Console.WriteLine($"[ViewerHub] Loading {history.Count} encrypted IM messages");
 
-            // Group by conversation partner
             var grouped = history.GroupBy(m => m.OtherId);
             foreach (var group in grouped)
             {
                 var otherId = group.Key;
                 var otherName = group.First().OtherName;
-                var msgs = group.Select(m => new { From = m.FromMe ? "You" : otherName, Text = m.Message, Time = m.Timestamp.ToString("HH:mm") }).ToList();
+                var msgs = group.Select(m =>
+                {
+                    try { return new { From = m.FromMe ? "You" : otherName, Text = IMEncryption.Decrypt(m.Message, userPassword, UserId), Time = m.Timestamp.ToString("HH:mm") }; }
+                    catch { return new { From = m.FromMe ? "You" : otherName, Text = "[decryption error]", Time = m.Timestamp.ToString("HH:mm") }; }
+                }).ToList();
 
                 await caller.SendAsync("IMHistory", new { OtherId = otherId, OtherName = otherName, Messages = msgs });
             }
         }
-        catch (Exception ex) { Console.WriteLine($"[ViewerHub] IM history load error: {ex.Message}"); }
+        catch (Exception ex) { Console.WriteLine($"[ViewerHub] IM history error: {ex.Message}"); }
 
-        // Friends list
+        // Friends
         try
         {
             var friendListField = client.Friends.GetType().GetField("FriendList", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -232,23 +238,22 @@ public class ViewerHub : Hub
         var session = _grid.GetUserSessions(UserId).FirstOrDefault();
         if (session == null) { await Clients.Caller.SendAsync("Error", "No active avatar"); return; }
 
+        var userPassword = await GetUserPasswordAsync();
+
         try
         {
             if (Guid.TryParse(targetId, out var guid))
             {
                 session.Client.Self.InstantMessage(new UUID(guid), message);
 
-                // Save to DB
+                // Encrypt and save
+                var encryptedMsg = IMEncryption.Encrypt(message, userPassword, UserId);
                 try
                 {
                     _db.IMMessages.Add(new IMMessage
                     {
-                        UserId = UserId,
-                        OtherId = targetId,
-                        OtherName = "",
-                        Message = message,
-                        FromMe = true,
-                        Timestamp = DateTime.UtcNow
+                        UserId = UserId, OtherId = targetId, OtherName = "",
+                        Message = encryptedMsg, FromMe = true, Timestamp = DateTime.UtcNow
                     });
                     await _db.SaveChangesAsync();
                 }
@@ -256,6 +261,35 @@ public class ViewerHub : Hub
             }
         }
         catch (Exception ex) { await Clients.Caller.SendAsync("Error", $"IM failed: {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// Clear IM history for a specific conversation or all.
+    /// </summary>
+    public async Task ClearIMHistory(string? otherId = null)
+    {
+        try
+        {
+            if (otherId != null)
+            {
+                // Clear specific conversation
+                var messages = await _db.IMMessages
+                    .Where(m => m.UserId == UserId && m.OtherId == otherId)
+                    .ToListAsync();
+                _db.IMMessages.RemoveRange(messages);
+            }
+            else
+            {
+                // Clear all IM history
+                var messages = await _db.IMMessages
+                    .Where(m => m.UserId == UserId)
+                    .ToListAsync();
+                _db.IMMessages.RemoveRange(messages);
+            }
+            await _db.SaveChangesAsync();
+            Console.WriteLine($"[ViewerHub] Cleared IM history for user {UserId}" + (otherId != null ? $" with {otherId}" : ""));
+        }
+        catch (Exception ex) { Console.WriteLine($"[ViewerHub] Clear IM error: {ex.Message}"); }
     }
 
     public async Task Teleport(string regionName)
