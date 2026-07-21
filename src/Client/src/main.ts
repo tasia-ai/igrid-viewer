@@ -15,16 +15,14 @@ const avatarPanel = document.getElementById('avatar-panel')!;
 const avatarList = document.getElementById('avatar-list')!;
 const connectBtn = document.getElementById('connect-btn') as HTMLButtonElement;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
-const createAvatarBtn = document.getElementById('create-avatar-btn') as HTMLButtonElement;
-const avatarFirstName = document.getElementById('avatar-first') as HTMLInputElement;
-const avatarLastName = document.getElementById('avatar-last') as HTMLInputElement;
-const avatarSlPass = document.getElementById('avatar-sl-pass') as HTMLInputElement;
-const avatarCreateError = document.getElementById('avatar-create-error')!;
-const hud = document.getElementById('hud')!;
+const switchAvatarBtn = document.getElementById('switch-avatar-btn') as HTMLButtonElement;
+const topBar = document.getElementById('top-bar')!;
+const regionInfo = document.getElementById('region-info')!;
+const positionDisplay = document.getElementById('position-display')!;
+const bottomBar = document.getElementById('bottom-bar')!;
 const chatMessages = document.getElementById('chat-messages')!;
 const chatForm = document.getElementById('chat-form') as HTMLFormElement;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
-const positionInfo = document.getElementById('position-info')!;
 const minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
 const teleportForm = document.getElementById('teleport-form') as HTMLFormElement;
 const teleportInput = document.getElementById('teleport-input') as HTMLInputElement;
@@ -67,9 +65,7 @@ loginForm.addEventListener('submit', async (e) => {
   const username = (document.getElementById('username') as HTMLInputElement).value;
   const password = (document.getElementById('password') as HTMLInputElement).value;
 
-  // Validate confirm password in register mode
   if (isRegisterMode) {
-    // Validate beta key
     if (betaKeyInput.value.trim() !== 'tasia') {
       loginError.textContent = 'Invalid beta key';
       loginError.style.display = 'block';
@@ -106,9 +102,7 @@ loginForm.addEventListener('submit', async (e) => {
 
     const data = await res.json();
 
-    // Registration returns a message, login returns a token
     if (isRegisterMode) {
-      // Auto-login after registration
       const loginRes = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -119,6 +113,7 @@ loginForm.addEventListener('submit', async (e) => {
         isRegisterMode = false;
         authBtn.textContent = 'Login';
         confirmPasswordInput.style.display = 'none';
+        betaKeyInput.style.display = 'none';
         toggleAuth.textContent = "Don't have an account? Register";
         return;
       }
@@ -147,11 +142,10 @@ async function loadAvatars(): Promise<void> {
     });
 
     if (!res.ok) throw new Error('Failed to load avatars');
-
     const avatars = await res.json();
 
     if (avatars.length === 0) {
-      avatarList.innerHTML = '<li style="color:#888;text-align:center">No avatars yet. Create one on the grid first.</li>';
+      avatarList.innerHTML = '<li style="color:#888;text-align:center">No avatars. Create one below.</li>';
       connectBtn.disabled = true;
       return;
     }
@@ -160,8 +154,8 @@ async function loadAvatars(): Promise<void> {
     for (const avatar of avatars) {
       const li = document.createElement('li');
       li.innerHTML = `
-        <div class="avatar-name">${avatar.firstName} ${avatar.lastName}</div>
-        <div style="font-size:0.8rem;color:#888;margin-top:2px">${avatar.homeUri || 'Default location'}</div>
+        <div style="font-weight:600">${avatar.firstName} ${avatar.lastName}</div>
+        <div style="font-size:0.75rem;color:#888">${avatar.homeUri || 'Default location'}</div>
       `;
       li.addEventListener('click', () => {
         avatarList.querySelectorAll('li').forEach((el) => el.classList.remove('selected'));
@@ -177,6 +171,12 @@ async function loadAvatars(): Promise<void> {
 }
 
 // --- Create avatar ---
+const createAvatarBtn = document.getElementById('create-avatar-btn') as HTMLButtonElement;
+const avatarFirstName = document.getElementById('avatar-first') as HTMLInputElement;
+const avatarLastName = document.getElementById('avatar-last') as HTMLInputElement;
+const avatarSlPass = document.getElementById('avatar-sl-pass') as HTMLInputElement;
+const avatarCreateError = document.getElementById('avatar-create-error')!;
+
 createAvatarBtn.addEventListener('click', async () => {
   avatarCreateError.style.display = 'none';
   const firstName = avatarFirstName.value.trim();
@@ -195,15 +195,8 @@ createAvatarBtn.addEventListener('click', async () => {
   try {
     const res = await fetch('/api/avatars', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({
-        firstName,
-        lastName,
-        slPassword: slPass || undefined,
-      }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+      body: JSON.stringify({ firstName, lastName, slPassword: slPass || undefined }),
     });
 
     if (!res.ok) {
@@ -226,99 +219,72 @@ createAvatarBtn.addEventListener('click', async () => {
   }
 });
 
+// --- Switch Avatar ---
+switchAvatarBtn.addEventListener('click', async () => {
+  if (gridClient) { await gridClient.stop(); gridClient = null; }
+  selectedAvatarId = null;
+  hideWorldUI();
+  avatarPanel.style.display = 'block';
+  await loadAvatars();
+  if (sceneManager) { sceneManager.renderer.dispose(); viewport.innerHTML = ''; sceneManager = null; }
+  minimap = null;
+});
+
 // --- Connect to world ---
 connectBtn.addEventListener('click', async () => {
   if (!selectedAvatarId) return;
 
-  // Initialize 3D scene
   sceneManager = new SceneManager(viewport);
-
-  // Initialize minimap
   minimap = new MinimapRenderer(minimapCanvas);
-
-  // Pass base URL for texture proxy
   const baseUrl = window.location.origin;
 
-  // Add chat callback
   gridClient = new GridClient(
-    sceneManager,
-    authToken,
-    baseUrl,
+    sceneManager, authToken, baseUrl,
     (from, message) => addChatMessage(from, message),
     (x, y, z) => {
-      positionInfo.textContent = `${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`;
+      positionDisplay.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}`;
       minimap?.setPlayerPosition(x, y);
     },
     undefined,
-    (id, name, online) => {
-      friends.set(id, { id, name, online });
-      renderFriends();
-    },
-    (from, message, fromId) => {
-      addIMMessage(from, message, fromId);
-    },
-    (x, y, heights) => {
-      minimap?.updatePatch(x, y, heights);
-    }
+    (id, name, online) => { friends.set(id, { id, name, online }); renderFriends(); },
+    (from, message, fromId) => { addIMMessage(from, message, fromId); },
+    (x, y, heights) => { minimap?.updatePatch(x, y, heights); }
   );
 
   try {
     await gridClient.start();
     await gridClient.connectAvatar(selectedAvatarId);
-
-    // Hide avatar panel, show HUD
-    avatarPanel.style.display = 'none';
-    hud.style.display = 'flex';
-
-    // Start render loop with camera movement
-    sceneManager.animate((delta) => {
-      gridClient?.camera?.update(delta);
-    });
+    showWorldUI();
+    sceneManager.animate((delta) => { gridClient?.camera?.update(delta); });
   } catch (err) {
     console.error('Failed to connect:', err);
   }
 });
 
+function showWorldUI() {
+  avatarPanel.style.display = 'none';
+  topBar.style.display = 'flex';
+  bottomBar.style.display = 'flex';
+  document.getElementById('right-panel')!.style.display = 'block';
+}
+
+function hideWorldUI() {
+  topBar.style.display = 'none';
+  bottomBar.style.display = 'none';
+  document.getElementById('right-panel')!.style.display = 'none';
+  document.getElementById('im-panel')!.style.display = 'none';
+}
+
 // --- Logout ---
 logoutBtn.addEventListener('click', async () => {
-  if (gridClient) {
-    await gridClient.stop();
-    gridClient = null;
-  }
+  if (gridClient) { await gridClient.stop(); gridClient = null; }
   authToken = '';
   selectedAvatarId = null;
-  hud.style.display = 'none';
+  hideWorldUI();
   avatarPanel.style.display = 'none';
   loginPanel.style.display = 'block';
   loginForm.reset();
-
-  // Dispose 3D scene
-  if (sceneManager) {
-    sceneManager.renderer.dispose();
-    viewport.innerHTML = '';
-    sceneManager = null;
-  }
-  minimap = null;
-});
-
-// --- Switch Avatar ---
-const switchAvatarBtn = document.getElementById('switch-avatar-btn') as HTMLButtonElement;
-switchAvatarBtn.addEventListener('click', async () => {
-  if (gridClient) {
-    await gridClient.stop();
-    gridClient = null;
-  }
-  selectedAvatarId = null;
-  hud.style.display = 'none';
-  avatarPanel.style.display = 'block';
-  await loadAvatars();
-
-  // Dispose 3D scene
-  if (sceneManager) {
-    sceneManager.renderer.dispose();
-    viewport.innerHTML = '';
-    sceneManager = null;
-  }
+  if (sceneManager) { sceneManager.renderer.dispose(); viewport.innerHTML = ''; sceneManager = null; }
   minimap = null;
 });
 
@@ -327,7 +293,6 @@ chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const msg = chatInput.value.trim();
   if (!msg || !gridClient) return;
-
   await gridClient.sendChat(msg);
   addChatMessage('You', msg);
   chatInput.value = '';
@@ -340,22 +305,15 @@ function addChatMessage(from: string, message: string): void {
   line.innerHTML = `<span class="chat-name">${escapeHtml(from)}:</span> ${escapeHtml(message)}`;
   chatMessages.appendChild(line);
   chatMessages.scrollTop = chatMessages.scrollHeight;
-
-  // Keep only last 200 messages
-  while (chatMessages.children.length > 200) {
-    chatMessages.removeChild(chatMessages.firstChild!);
-  }
+  while (chatMessages.children.length > 200) chatMessages.removeChild(chatMessages.firstChild!);
 }
 
-// --- Teleport (supports Hypergrid URIs) ---
+// --- Teleport ---
 teleportForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const destination = teleportInput.value.trim();
   if (!destination || !gridClient) return;
-
-  // Detect if this is a Hypergrid URI (contains :// or @)
   const isHypergrid = destination.includes('://') || destination.includes('@');
-
   try {
     if (isHypergrid) {
       await gridClient.hypergridTeleport(destination);
@@ -370,124 +328,93 @@ teleportForm.addEventListener('submit', async (e) => {
   }
 });
 
-// --- Contacts & IM ---
-const contactsHeader = document.getElementById('contacts-header')!;
-const contactsList = document.getElementById('contacts-list')!;
+// --- Friends & IM ---
+const friendsHeader = document.getElementById('friends-header')!;
+const friendsList = document.getElementById('friends-list')!;
 const onlineCount = document.getElementById('online-count')!;
 const imPanel = document.getElementById('im-panel')!;
 const imHeader = document.getElementById('im-header')!;
+const imTitle = document.getElementById('im-title')!;
 const imMessages = document.getElementById('im-messages')!;
 const imForm = document.getElementById('im-form') as HTMLFormElement;
 const imInput = document.getElementById('im-input') as HTMLInputElement;
 
-interface Friend {
-  id: string;
-  name: string;
-  online: boolean;
-}
-
+interface Friend { id: string; name: string; online: boolean; }
 const friends = new Map<string, Friend>();
 let imTarget: Friend | null = null;
 const imHistories = new Map<string, { from: string; message: string; time: Date }[]>();
 let imOpen = false;
 
-// Toggle contacts list
-contactsHeader.addEventListener('click', (e) => {
+friendsHeader.addEventListener('click', (e) => {
   e.stopPropagation();
-  contactsList.style.display = contactsList.style.display === 'none' ? 'block' : 'none';
+  friendsList.style.display = friendsList.style.display === 'none' ? 'block' : 'none';
 });
 
-// Render friends list
 function renderFriends(): void {
-  contactsList.innerHTML = '';
+  friendsList.innerHTML = '';
   let online = 0;
   for (const friend of friends.values()) {
     if (friend.online) online++;
     const div = document.createElement('div');
     const unread = imHistories.get(friend.id)?.filter(m => m.from !== 'You').length ?? 0;
-    const unreadBadge = unread > 0 ? ` <span style="color:#ef5350;font-weight:bold">(${unread})</span>` : '';
-    div.style.cssText = `padding:3px 6px;cursor:pointer;font-size:11px;border-radius:3px;margin:1px 0;color:${friend.online ? '#8f8' : '#888'}`;
-    div.innerHTML = `${friend.online ? '● ' : '○ '}${escapeHtml(friend.name)}${unreadBadge}`;
-    div.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openIM(friend);
-    });
-    contactsList.appendChild(div);
+    div.className = `friend-item ${friend.online ? 'friend-online' : 'friend-offline'}`;
+    div.innerHTML = `${friend.online ? '● ' : '○ '}${escapeHtml(friend.name)}${unread > 0 ? `<span class="friend-unread">${unread}</span>` : ''}`;
+    div.addEventListener('click', (e) => { e.stopPropagation(); openIM(friend); });
+    friendsList.appendChild(div);
   }
   onlineCount.textContent = online.toString();
 }
 
-// Open IM panel with a friend
 function openIM(friend: Friend): void {
   imTarget = friend;
   imOpen = true;
-  imHeader.textContent = `IM with ${friend.name}`;
-  // Restore history
+  imTitle.textContent = friend.name;
   imMessages.innerHTML = '';
   const history = imHistories.get(friend.id) || [];
   for (const msg of history) {
     const line = document.createElement('div');
-    const color = msg.from === 'You' ? '#4fc3f7' : '#8f8';
+    const color = msg.from === 'You' ? '#6ab0ff' : '#8f8';
     line.innerHTML = `<b style="color:${color}">${escapeHtml(msg.from)}:</b> ${escapeHtml(msg.message)}`;
     imMessages.appendChild(line);
   }
   imMessages.scrollTop = imMessages.scrollHeight;
   imPanel.style.display = 'block';
-  contactsList.style.display = 'none';
+  friendsList.style.display = 'none';
   imInput.focus();
 }
 
-// Send IM
 imForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const msg = imInput.value.trim();
   if (!msg || !imTarget || !gridClient) return;
-
   try {
     await gridClient.sendIM(imTarget.id, msg);
-    // Store in history
     if (!imHistories.has(imTarget.id)) imHistories.set(imTarget.id, []);
     imHistories.get(imTarget.id)!.push({ from: 'You', message: msg, time: new Date() });
-
     const line = document.createElement('div');
-    line.innerHTML = `<b style="color:#4fc3f7">You:</b> ${escapeHtml(msg)}`;
+    line.innerHTML = `<b style="color:#6ab0ff">You:</b> ${escapeHtml(msg)}`;
     imMessages.appendChild(line);
     imMessages.scrollTop = imMessages.scrollHeight;
     imInput.value = '';
-  } catch (err) {
-    console.error('IM send error:', err);
-  }
+  } catch (err) { console.error('IM send error:', err); }
 });
 
-// Close IM panel
 imHeader.addEventListener('click', (e) => {
   e.stopPropagation();
-  if (imOpen) {
-    imPanel.style.display = 'none';
-    imOpen = false;
-    imTarget = null;
-  }
+  if (imOpen) { imPanel.style.display = 'none'; imOpen = false; imTarget = null; }
 });
 
-// Receive IM
 function addIMMessage(from: string, message: string, fromId?: string): void {
-  // Store in history for the sender
   const histId = fromId || from;
   if (!imHistories.has(histId)) imHistories.set(histId, []);
   imHistories.get(histId)!.push({ from, message, time: new Date() });
-
-  // If this IM is for the currently open conversation, show it
   if (imTarget && imOpen && (fromId === imTarget.id || from === imTarget?.name)) {
     const line = document.createElement('div');
     line.innerHTML = `<b style="color:#8f8">${escapeHtml(from)}:</b> ${escapeHtml(message)}`;
     imMessages.appendChild(line);
     imMessages.scrollTop = imMessages.scrollHeight;
   }
-
-  // Show in local chat too
   addChatMessage(`[IM] ${from}`, message);
-
-  // Update friend list to show unread badge
   renderFriends();
 }
 
