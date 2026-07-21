@@ -39,7 +39,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var path = context.HttpContext.Request.Path;
 
                 if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/hubs/viewer"))
+                    (path.StartsWithSegments("/hubs/viewer") ||
+                     path.StartsWithSegments("/hubs/hypergrid")))
                 {
                     context.Token = accessToken;
                 }
@@ -122,6 +123,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ViewerHub>("/hubs/viewer");
+app.MapHub<HypergridHub>("/hubs/hypergrid");
 
 // Serve static files (built frontend)
 app.UseDefaultFiles();

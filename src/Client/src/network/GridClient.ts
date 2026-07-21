@@ -8,11 +8,12 @@ import { AvatarRenderer } from '../engine/AvatarRenderer';
 import { PBRMaterialLoader } from '../engine/PBRMaterialLoader';
 
 /**
- * Bridges the browser to the ViewerHub via SignalR.
+ * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
  * Receives world events and dispatches them to the 3D renderers.
  */
 export class GridClient {
   private connection: signalR.HubConnection;
+  private hypergridConnection: signalR.HubConnection | null = null;
   private terrain: TerrainRenderer;
   private objects: ObjectRenderer;
   private avatars: AvatarRenderer;
@@ -29,7 +30,8 @@ export class GridClient {
     private authToken: string,
     private baseUrl: string,
     private onChatMessage?: (from: string, message: string) => void,
-    private onPositionUpdate?: (x: number, y: number, z: number) => void
+    private onPositionUpdate?: (x: number, y: number, z: number) => void,
+    private onTeleportStarted?: (destination: string, gridUri?: string, region?: string) => void
   ) {
     this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
     this.terrain = new TerrainRenderer(sceneManager.scene);
@@ -44,11 +46,11 @@ export class GridClient {
       .withAutomaticReconnect()
       .build();
 
-    this.setupEventHandlers();
+    this.setupEventHandlers(this.connection);
   }
 
-  private setupEventHandlers(): void {
-    this.connection.on('AvatarConnected', (data: any) => {
+  private setupEventHandlers(hub: signalR.HubConnection): void {
+    hub.on('AvatarConnected', (data: any) => {
       console.log('[Grid] Connected as:', data.firstName);
       this._connected = true;
       this.camera.setTarget(
@@ -56,7 +58,7 @@ export class GridClient {
       );
     });
 
-    this.connection.on('ObjectUpdate', (data: any) => {
+    hub.on('ObjectUpdate', (data: any) => {
       this.objects.updatePrim({
         id: data.id,
         name: data.name,
@@ -68,7 +70,7 @@ export class GridClient {
       });
     });
 
-    this.connection.on('AvatarUpdate', (data: any) => {
+    hub.on('AvatarUpdate', (data: any) => {
       this.avatars.updateAvatar({
         id: data.id,
         name: data.name,
@@ -77,30 +79,35 @@ export class GridClient {
       });
     });
 
-    this.connection.on('TerrainPatch', (data: any) => {
+    hub.on('TerrainPatch', (data: any) => {
       if (data.heights) {
         this.terrain.updatePatch(data.x, data.y, new Float32Array(data.heights));
       }
     });
 
-    this.connection.on('ChatMessage', (data: any) => {
+    hub.on('ChatMessage', (data: any) => {
       this.onChatMessage?.(data.from, data.message);
     });
 
-    this.connection.on('MyPosition', (data: any) => {
+    hub.on('MyPosition', (data: any) => {
       this.camera.setTarget(new THREE.Vector3(data.x, data.z, data.y));
       this.onPositionUpdate?.(data.x, data.y, data.z);
     });
 
-    this.connection.on('Error', (message: string) => {
+    hub.on('TeleportStarted', (data: any) => {
+      console.log('[Grid] Teleport started:', data.destination);
+      this.onTeleportStarted?.(data.destination, data.gridUri, data.region);
+    });
+
+    hub.on('Error', (message: string) => {
       console.error('[Grid] Error:', message);
     });
 
-    this.connection.onreconnected(() => {
+    hub.onreconnected(() => {
       console.log('[Grid] Reconnected');
     });
 
-    this.connection.onclose((err) => {
+    hub.onclose((err) => {
       console.warn('[Grid] Connection closed:', err);
       this._connected = false;
     });
@@ -112,6 +119,25 @@ export class GridClient {
   async start(): Promise<void> {
     await this.connection.start();
     console.log('[Grid] SignalR connected');
+  }
+
+  /**
+   * Connect Hypergrid hub for cross-grid teleports.
+   */
+  private async ensureHypergridHub(): Promise<signalR.HubConnection> {
+    if (this.hypergridConnection) return this.hypergridConnection;
+
+    this.hypergridConnection = new signalR.HubConnectionBuilder()
+      .withUrl('/hubs/hypergrid', {
+        accessTokenFactory: () => this.authToken,
+      })
+      .withAutomaticReconnect()
+      .build();
+
+    this.setupEventHandlers(this.hypergridConnection);
+    await this.hypergridConnection.start();
+    console.log('[Grid] Hypergrid hub connected');
+    return this.hypergridConnection;
   }
 
   /**
@@ -129,10 +155,22 @@ export class GridClient {
   }
 
   /**
-   * Teleport to a named region.
+   * Teleport to a named region on the current grid.
    */
   async teleport(regionName: string): Promise<void> {
     await this.connection.invoke('Teleport', regionName);
+  }
+
+  /**
+   * Hypergrid teleport to a foreign grid.
+   * Supports formats:
+   *   - "Region Name" (same grid)
+   *   - "https://grid.com:8002/Region Name"
+   *   - "user@grid.com:8002/Region Name"
+   */
+  async hypergridTeleport(destination: string): Promise<void> {
+    const hgHub = await this.ensureHypergridHub();
+    await hgHub.invoke('HypergridTeleport', destination);
   }
 
   /**
@@ -140,6 +178,10 @@ export class GridClient {
    */
   async stop(): Promise<void> {
     this.materialLoader.dispose();
+    if (this.hypergridConnection) {
+      await this.hypergridConnection.stop();
+      this.hypergridConnection = null;
+    }
     await this.connection.stop();
     this._connected = false;
   }

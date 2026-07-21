@@ -186,16 +186,24 @@ function addChatMessage(from: string, message: string): void {
   }
 }
 
-// --- Teleport ---
+// --- Teleport (supports Hypergrid URIs) ---
 teleportForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const regionName = teleportInput.value.trim();
-  if (!regionName || !gridClient) return;
+  const destination = teleportInput.value.trim();
+  if (!destination || !gridClient) return;
+
+  // Detect if this is a Hypergrid URI (contains :// or @)
+  const isHypergrid = destination.includes('://') || destination.includes('@');
 
   try {
-    await gridClient.teleport(regionName);
+    if (isHypergrid) {
+      await gridClient.hypergridTeleport(destination);
+      addChatMessage('System', `Hypergrid teleport to ${destination}...`);
+    } else {
+      await gridClient.teleport(destination);
+      addChatMessage('System', `Teleporting to ${destination}...`);
+    }
     teleportInput.value = '';
-    addChatMessage('System', `Teleporting to ${regionName}...`);
   } catch (err) {
     addChatMessage('System', 'Teleport failed');
   }
