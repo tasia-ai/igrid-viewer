@@ -53,7 +53,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // --- Services ---
-builder.Services.AddSingleton<GridConnectionService>();
+builder.Services.AddScoped<GridConnectionService>();
 builder.Services.AddScoped<AuthService>();
 
 // --- SignalR ---
@@ -64,7 +64,11 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:3001")
+        policy.WithOrigins(
+                "http://localhost:3001",
+                "http://192.168.55.3:3001",
+                "http://192.168.0.1:3001",
+                "http://172.19.48.1:3001")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -109,6 +113,13 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+// Auto-create database
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
 
 // --- Middleware pipeline ---
 if (app.Environment.IsDevelopment())

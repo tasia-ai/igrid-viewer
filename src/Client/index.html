@@ -80,11 +80,19 @@
   <!-- Login -->
   <div id="login-panel" class="overlay">
     <h2>&#10022; I-Grid &#10022;</h2>
+    <div style="background:rgba(255,193,7,0.15);border:1px solid rgba(255,193,7,0.4);border-radius:6px;padding:8px 12px;margin-bottom:1rem;font-size:0.75rem;color:#ffc107;line-height:1.4">
+      &#9888; This account is <b>only for the web viewer</b>. Please do NOT use your grid password!
+    </div>
     <form id="login-form">
       <input id="username" class="form-control" placeholder="Username" required autocomplete="username">
       <input id="password" type="password" class="form-control" placeholder="Password" required autocomplete="current-password">
-      <button type="submit" class="btn btn-primary w-100 mt-2">Login</button>
+      <input id="confirm-password" type="password" class="form-control" placeholder="Confirm password" autocomplete="new-password" style="display:none">
+      <input id="beta-key" class="form-control" placeholder="Beta key" style="display:none">
+      <button type="submit" class="btn btn-primary w-100 mt-2" id="auth-btn">Login</button>
       <div id="login-error" class="error"></div>
+      <div class="text-center mt-2">
+        <a href="#" id="toggle-auth" style="color:#4fc3f7; font-size:0.85rem; text-decoration:none">Don't have an account? Register</a>
+      </div>
     </form>
   </div>
 
@@ -92,6 +100,14 @@
   <div id="avatar-panel" class="overlay" style="display:none">
     <h3>Select Avatar</h3>
     <ul id="avatar-list"></ul>
+    <div id="create-avatar-form" style="margin-top:0.8rem; padding-top:0.8rem; border-top:1px solid rgba(255,255,255,0.1)">
+      <div style="font-size:0.8rem;color:#888;margin-bottom:0.5rem">Create new avatar:</div>
+      <input id="avatar-first" class="form-control mb-1" placeholder="First name" style="font-size:0.85rem">
+      <input id="avatar-last" class="form-control mb-1" placeholder="Last name" style="font-size:0.85rem">
+      <input id="avatar-sl-pass" type="password" class="form-control mb-1" placeholder="SL password (for grid)" style="font-size:0.85rem">
+      <button id="create-avatar-btn" class="btn btn-outline-info w-100" style="font-size:0.8rem">Create Avatar</button>
+      <div id="avatar-create-error" style="color:#ef5350;font-size:0.75rem;margin-top:0.3rem;display:none"></div>
+    </div>
     <button id="connect-btn" class="btn btn-primary w-100 mt-2" disabled>Enter World</button>
     <button id="logout-btn" class="btn btn-outline-secondary w-100 mt-2" style="font-size:0.85rem">Logout</button>
   </div>
@@ -110,6 +126,19 @@
         <input id="teleport-input" class="form-control" placeholder="Teleport to region..." autocomplete="off">
         <button type="submit" class="btn btn-primary btn-sm">TP</button>
       </form>
+    </div>
+    <div id="contacts-panel">
+      <div id="contacts-header" style="cursor:pointer;padding:4px 8px;background:rgba(0,0,0,0.6);border-radius:6px;font-size:12px;color:#4fc3f7">
+        &#128101; Friends <span id="online-count">0</span>
+      </div>
+      <div id="contacts-list" style="display:none;max-height:200px;overflow-y:auto;background:rgba(0,0,0,0.75);border-radius:6px;margin-top:4px;padding:4px"></div>
+      <div id="im-panel" style="display:none;background:rgba(0,0,0,0.8);border-radius:6px;margin-top:4px;padding:6px">
+        <div id="im-header" style="font-size:11px;color:#aaa;margin-bottom:4px"></div>
+        <div id="im-messages" style="height:80px;overflow-y:auto;font-size:11px;color:#ccc;margin-bottom:4px"></div>
+        <form id="im-form" style="display:flex;gap:3px">
+          <input id="im-input" class="form-control" placeholder="Send IM..." style="font-size:11px;padding:3px 6px" autocomplete="off">
+        </form>
+      </div>
     </div>
     <div id="minimap"><canvas id="minimap-canvas" width="180" height="180"></canvas></div>
   </div>

@@ -31,7 +31,9 @@ export class GridClient {
     private baseUrl: string,
     private onChatMessage?: (from: string, message: string) => void,
     private onPositionUpdate?: (x: number, y: number, z: number) => void,
-    private onTeleportStarted?: (destination: string, gridUri?: string, region?: string) => void
+    private onTeleportStarted?: (destination: string, gridUri?: string, region?: string) => void,
+    private onFriendUpdate?: (id: string, name: string, online: boolean) => void,
+    private onIM?: (from: string, message: string, fromId?: string) => void,
   ) {
     this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
     this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
@@ -113,6 +115,22 @@ export class GridClient {
       this.onTeleportStarted?.(data.destination, data.gridUri, data.region);
     });
 
+    hub.on('FriendUpdate', (data: any) => {
+      this.onFriendUpdate?.(data.id, data.name, data.online);
+    });
+
+    hub.on('FriendOnline', (data: any) => {
+      this.onFriendUpdate?.(data.id, data.name, true);
+    });
+
+    hub.on('FriendOffline', (data: any) => {
+      this.onFriendUpdate?.(data.id, data.name, false);
+    });
+
+    hub.on('InstantMessage', (data: any) => {
+      this.onIM?.(data.from, data.message, data.fromId);
+    });
+
     hub.on('Error', (message: string) => {
       console.error('[Grid] Error:', message);
     });
@@ -159,6 +177,13 @@ export class GridClient {
    */
   async connectAvatar(avatarId: number): Promise<void> {
     await this.connection.invoke('ConnectAvatar', avatarId);
+  }
+
+  /**
+   * Send an instant message to another avatar.
+   */
+  async sendIM(targetId: string, message: string): Promise<void> {
+    await this.connection.invoke('SendIM', targetId, message);
   }
 
   /**

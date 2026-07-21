@@ -57,7 +57,7 @@ public class AvatarsController : ControllerBase
             UserId = UserId,
             FirstName = request.FirstName,
             LastName = request.LastName,
-            Password = BCrypt.Net.BCrypt.HashPassword(request.SLPassword),
+            Password = request.SLPassword ?? string.Empty,
             HomeUri = request.HomeUri
         };
 

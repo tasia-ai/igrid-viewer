@@ -30,10 +30,18 @@ public class GridConnectionService
     /// </summary>
     public Task<GridSession?> ConnectAvatarAsync(int userId, int avatarId)
     {
+        Console.WriteLine($"[Grid] ConnectAvatar called: userId={userId}, avatarId={avatarId}");
+
         var avatar = _db.Avatars
             .FirstOrDefault(a => a.Id == avatarId && a.UserId == userId && a.IsActive);
 
-        if (avatar == null) return Task.FromResult<GridSession?>(null);
+        if (avatar == null)
+        {
+            Console.WriteLine($"[Grid] Avatar not found: avatarId={avatarId}, userId={userId}");
+            return Task.FromResult<GridSession?>(null);
+        }
+
+        Console.WriteLine($"[Grid] Avatar found: {avatar.FirstName} {avatar.LastName}, password length={avatar.Password?.Length ?? 0}");
 
         var client = new GridClient();
         var tcs = new TaskCompletionSource<GridSession?>();
@@ -41,10 +49,12 @@ public class GridConnectionService
         // Subscribe to login progress for the result
         void OnLoginProgress(object? sender, LoginProgressEventArgs e)
         {
-            client.Network.LoginProgress -= OnLoginProgress;
+            Console.WriteLine($"[Grid] LoginProgress: Status={e.Status}, Message={e.Message}");
 
             if (e.Status == LoginStatus.Success)
             {
+                Console.WriteLine($"[Grid] Login SUCCESS: {client.Self.Name}");
+                client.Network.LoginProgress -= OnLoginProgress;
                 var session = new GridSession
                 {
                     AvatarId = avatarId,
@@ -53,14 +63,16 @@ public class GridConnectionService
                     IsConnected = true,
                     ConnectedAt = DateTime.UtcNow
                 };
-
                 _sessions[avatarId] = session;
                 tcs.TrySetResult(session);
             }
-            else
+            else if (e.Status == LoginStatus.Failed)
             {
+                Console.WriteLine($"[Grid] Login FAILED: {e.Status} - {e.Message}");
+                client.Network.LoginProgress -= OnLoginProgress;
                 tcs.TrySetResult(null);
             }
+            // else: intermediate status (ConnectingToSim, ReadingResponse, etc.) — keep waiting
         }
 
         client.Network.LoginProgress += OnLoginProgress;
@@ -74,6 +86,8 @@ public class GridConnectionService
             ClientVersion);
 
         loginParams.URI = GridLoginUri;
+
+        Console.WriteLine($"[Grid] Starting login: {avatar.FirstName} {avatar.LastName} @ {GridLoginUri}");
 
         // Begin async login (non-blocking, fires LoginProgress when done)
         client.Network.BeginLogin(loginParams);

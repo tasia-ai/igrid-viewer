@@ -2,17 +2,18 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   server: {
+    host: true,
     port: 3001,
     proxy: {
-      '/api': 'http://localhost:5000',
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
       '/hubs': {
         target: 'http://localhost:5000',
+        changeOrigin: true,
         ws: true,
       },
     },
-  },
-  build: {
-    outDir: '../Server/wwwroot',
-    emptyOutDir: true,
   },
 });

@@ -13,7 +13,7 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
 
     [MaxLength(256)]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
