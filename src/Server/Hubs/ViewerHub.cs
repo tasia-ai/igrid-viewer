@@ -263,14 +263,30 @@ public class ViewerHub : Hub
     private Task<byte[]?> RequestMeshAsync(GridClient client, UUID meshId)
     {
         var tcs = new TaskCompletionSource<byte[]?>();
+
+        // Try RequestMesh first (uses GetMesh HTTP cap if available)
         client.Assets.RequestMesh(meshId,
             (bool success, AssetMesh assetMesh) =>
             {
                 if (success && assetMesh?.AssetData != null && assetMesh.AssetData.Length > 0)
                     tcs.TrySetResult(assetMesh.AssetData);
                 else
-                    tcs.TrySetResult(null);
+                {
+                    // Fallback: try RequestAsset with AssetType.Mesh (UDP fetch)
+                    client.Assets.RequestAsset(meshId, AssetType.Mesh, false,
+                        (AssetDownload transfer, Asset asset) =>
+                        {
+                            if (asset != null && asset.AssetData != null && asset.AssetData.Length > 0)
+                                tcs.TrySetResult(asset.AssetData);
+                            else
+                                tcs.TrySetResult(null);
+                        });
+                }
             });
+
+        // Timeout after 10 seconds
+        _ = Task.Delay(10000).ContinueWith(_ => tcs.TrySetResult(null));
+
         return tcs.Task;
     }
 }

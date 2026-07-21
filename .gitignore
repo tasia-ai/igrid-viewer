@@ -39,3 +39,8 @@ docker-compose.override.yml
 
 # SQLite database (runtime data)
 *.db
+*.db-shm
+*.db-wal
+
+# LibreMetaverse cache
+src/Server/linden/
