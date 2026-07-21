@@ -71,7 +71,7 @@ export class GridClient {
         primType: data.primType,
         textureId: data.textureId,
         faces: data.faces,
-      });
+      }).catch(err => console.warn('[Grid] updatePrim error:', err));
     });
 
     hub.on('MeshData', (data: any) => {

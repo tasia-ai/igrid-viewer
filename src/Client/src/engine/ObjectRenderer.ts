@@ -12,31 +12,15 @@ export interface PrimData {
   textureId?: string;
   faces?: (any | null)[];
   meshData?: ArrayBuffer;
-  // Path/Profile data for advanced shapes
-  profileCurve?: number;
-  pathCurve?: number;
-  profileBegin?: number;
-  profileEnd?: number;
-  profileHollow?: number;
-  pathBegin?: number;
-  pathEnd?: number;
-  pathScaleX?: number;
-  pathScaleY?: number;
-  pathTaperX?: number;
-  pathTaperY?: number;
-  pathTwist?: number;
-  pathTwistBegin?: number;
-  pathRevolutions?: number;
 }
 
 /**
- * SL PrimType enum values:
- * 1=Box, 2=Cylinder, 3=Prism, 4=Sphere, 5=Torus, 6=Tube, 7=Ring, 8=Sculpt, 9=Mesh
+ * SL PrimType: 1=Box, 2=Cylinder, 3=Prism, 4=Sphere, 5=Torus, 6=Tube, 7=Ring, 8=Sculpt, 9=Mesh
  */
-
 export class ObjectRenderer {
   private scene: THREE.Scene;
   private objects: Map<string, THREE.Object3D> = new Map();
+  private meshCache: Map<string, THREE.BufferGeometry> = new Map();
   private materialLoader: PBRMaterialLoader;
   private meshDecoder = new SLMeshDecoder();
 
@@ -47,14 +31,17 @@ export class ObjectRenderer {
 
   async updatePrim(prim: PrimData): Promise<void> {
     const existing = this.objects.get(prim.id);
+
+    // If prim already exists, just update position/rotation/scale (fast path)
     if (existing) {
-      this.scene.remove(existing);
-      this.disposeObject(existing);
+      existing.position.set(prim.position.x, prim.position.z, prim.position.y);
+      existing.quaternion.set(prim.rotation.x, prim.rotation.z, prim.rotation.y, prim.rotation.w);
+      existing.scale.set(prim.scale.x, prim.scale.z, prim.scale.y);
+      return;
     }
 
+    // New prim — create full mesh with texture
     const object = await this.createPrimitive(prim);
-
-    // SL (Y=forward, Z=up) → Three.js (Z=forward, Y=up)
     object.position.set(prim.position.x, prim.position.z, prim.position.y);
     object.quaternion.set(prim.rotation.x, prim.rotation.z, prim.rotation.y, prim.rotation.w);
     object.scale.set(prim.scale.x, prim.scale.z, prim.scale.y);
@@ -69,38 +56,19 @@ export class ObjectRenderer {
     let geometry: THREE.BufferGeometry;
 
     switch (prim.primType) {
-      case 1: // Box
-        geometry = new THREE.BoxGeometry(1, 1, 1);
-        break;
-      case 2: // Cylinder
-        geometry = this.createCylinder(prim);
-        break;
-      case 3: // Prism
-        geometry = new THREE.ConeGeometry(0.5, 1, 3);
-        break;
-      case 4: // Sphere
-        geometry = new THREE.SphereGeometry(0.5, 24, 16);
-        break;
-      case 5: // Torus
-        geometry = new THREE.TorusGeometry(0.35, 0.12, 16, 32);
-        break;
-      case 6: // Tube
-        geometry = this.createTube(prim);
-        break;
-      case 7: // Ring
-        geometry = new THREE.TorusGeometry(0.35, 0.05, 8, 32);
-        break;
-      case 8: // Sculpt
-        geometry = new THREE.SphereGeometry(0.5, 16, 16); // placeholder
-        break;
-      case 9: // SL Mesh
-        geometry = await this.decodeMesh(prim.meshData);
-        break;
-      default:
-        geometry = new THREE.BoxGeometry(1, 1, 1);
+      case 1: geometry = new THREE.BoxGeometry(1, 1, 1); break;
+      case 2: geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 24); break;
+      case 3: geometry = new THREE.ConeGeometry(0.5, 1, 3); break;
+      case 4: geometry = new THREE.SphereGeometry(0.5, 24, 16); break;
+      case 5: geometry = new THREE.TorusGeometry(0.35, 0.12, 16, 32); break;
+      case 6: geometry = new THREE.TorusGeometry(0.35, 0.12, 8, 24); break;
+      case 7: geometry = new THREE.TorusGeometry(0.35, 0.05, 8, 32); break;
+      case 8: geometry = new THREE.SphereGeometry(0.5, 16, 16); break;
+      case 9: geometry = await this.decodeMesh(prim.meshData); break;
+      default: geometry = new THREE.BoxGeometry(1, 1, 1);
     }
 
-    // Load texture (face 0 or default)
+    // Load texture
     let material: THREE.MeshStandardMaterial;
     const texId = prim.textureId || (prim.faces?.[0] as any)?.TextureId;
 
@@ -122,22 +90,6 @@ export class ObjectRenderer {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     return mesh;
-  }
-
-  /**
-   * Cylinder with top/bottom radius from PathScale for hollow shapes.
-   */
-  private createCylinder(prim: PrimData): THREE.BufferGeometry {
-    const hollow = prim.profileHollow ?? 0;
-    const hollowRadius = hollow > 0 ? hollow : 0;
-    if (hollowRadius > 0) {
-      return new THREE.CylinderGeometry(0.5, 0.5, 1, 24, 1, true); // open-ended tube
-    }
-    return new THREE.CylinderGeometry(0.5, 0.5, 1, 24);
-  }
-
-  private createTube(prim: PrimData): THREE.BufferGeometry {
-    return new THREE.TorusGeometry(0.35, 0.12, 8, 24);
   }
 
   private async decodeMesh(meshData?: ArrayBuffer): Promise<THREE.BufferGeometry> {
