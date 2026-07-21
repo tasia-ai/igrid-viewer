@@ -130,21 +130,32 @@ export class ObjectRenderer {
    */
   async replaceMeshGeometry(primId: string, meshData: ArrayBuffer): Promise<void> {
     const group = this.objects.get(primId);
-    if (!group) return;
+    if (!group) { console.log(`[ObjectRenderer] replaceMeshGeometry: prim ${primId} not found`); return; }
 
+    console.log(`[ObjectRenderer] Replacing mesh for ${primId}, ${meshData.byteLength} bytes`);
     try {
       const geometry = await this.meshDecoder.decode(meshData);
+      console.log(`[ObjectRenderer] Decoded geometry: ${geometry.attributes.position?.count ?? 0} vertices`);
+
+      if (geometry.attributes.position?.count === 0) {
+        console.warn(`[ObjectRenderer] Empty geometry for ${primId}`);
+        return;
+      }
+
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
 
+      let replaced = false;
       group.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.geometry.dispose();
           child.geometry = geometry;
+          replaced = true;
         }
       });
+      console.log(`[ObjectRenderer] Mesh replaced for ${primId}: ${replaced}`);
     } catch (err) {
-      console.warn('[ObjectRenderer] Mesh decode failed:', err);
+      console.error('[ObjectRenderer] Mesh decode failed:', err);
     }
   }
 

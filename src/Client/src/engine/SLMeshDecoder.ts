@@ -81,12 +81,16 @@ export class SLMeshDecoder {
     this.data = new DataView(buffer);
     this.offset = 0;
 
+    console.log(`[MeshDecoder] Input: ${this.bytes.length} bytes, first 20: ${Array.from(this.bytes.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+
     // Step 1: Check for GZIP-wrapped asset (some OpenSim variants)
     if (this.bytes[0] === 0x1F && this.bytes[1] === 0x8B) {
+      console.log('[MeshDecoder] GZIP detected, decompressing...');
       const decompressed = await this.gzipDecompress(this.bytes);
       this.bytes = decompressed;
       this.data = new DataView(decompressed.buffer);
       this.offset = 0;
+      console.log(`[MeshDecoder] Decompressed to ${this.bytes.length} bytes`);
     }
 
     // Step 2: Verify magic prefix
