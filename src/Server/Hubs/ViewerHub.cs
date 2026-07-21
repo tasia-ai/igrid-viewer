@@ -129,6 +129,29 @@ public class ViewerHub : Hub
             catch { }
         };
 
+        // IM receive
+        client.Self.IM += async (_, e) =>
+        {
+            try
+            {
+                var im = e.IM;
+                // Skip outgoing IMs (from self)
+                if (im.FromAgentID == client.Self.AgentID) return;
+                // Skip group IMs
+                if (im.GroupIM) return;
+                // Skip system/dialog IMs
+                if (im.Dialog != InstantMessageDialog.MessageFromAgent) return;
+
+                await caller.SendAsync("InstantMessage", new
+                {
+                    From = im.FromAgentName ?? "Unknown",
+                    FromId = im.FromAgentID.ToString(),
+                    Message = im.Message
+                });
+            }
+            catch { }
+        };
+
         // Friends online/offline
         client.Friends.FriendOnline += async (_, e) =>
         {

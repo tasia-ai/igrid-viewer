@@ -298,6 +298,27 @@ logoutBtn.addEventListener('click', async () => {
   minimap = null;
 });
 
+// --- Switch Avatar ---
+const switchAvatarBtn = document.getElementById('switch-avatar-btn') as HTMLButtonElement;
+switchAvatarBtn.addEventListener('click', async () => {
+  if (gridClient) {
+    await gridClient.stop();
+    gridClient = null;
+  }
+  selectedAvatarId = null;
+  hud.style.display = 'none';
+  avatarPanel.style.display = 'block';
+  await loadAvatars();
+
+  // Dispose 3D scene
+  if (sceneManager) {
+    sceneManager.renderer.dispose();
+    viewport.innerHTML = '';
+    sceneManager = null;
+  }
+  minimap = null;
+});
+
 // --- Chat ---
 chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
