@@ -26,22 +26,44 @@ public class ViewerHub : Hub
             return;
         }
 
-        // IMPORTANT: Capture caller proxy BEFORE returning.
-        // ViewerHub is scoped — it gets disposed after ConnectAvatar returns,
-        // but LibreMetaverse events fire long after that.
         var caller = Clients.Caller;
         var client = session.Client;
 
-        // Object updates
+        // Object updates — send correct PrimType + texture faces
         client.Objects.ObjectUpdate += async (_, e) =>
         {
             try
             {
                 var prim = e.Prim;
-                string? textureId = null;
+
+                // Extract all 6 face textures
+                var faceTextures = new object[6];
+                for (int i = 0; i < 6; i++)
+                {
+                    var face = prim.Textures?.GetFace((uint)i);
+                    if (face != null && face.Valid && face.TextureID != UUID.Zero)
+                    {
+                        faceTextures[i] = new
+                        {
+                            TextureId = face.TextureID.ToString(),
+                            RepeatU = face.RepeatU,
+                            RepeatV = face.RepeatV,
+                            OffsetU = face.OffsetU,
+                            OffsetV = face.OffsetV,
+                            Rotation = face.Rotation,
+                        };
+                    }
+                    else
+                    {
+                        faceTextures[i] = null;
+                    }
+                }
+
+                // Default texture (face 0)
+                string? defaultTextureId = null;
                 if (prim.Textures?.DefaultTexture?.TextureID != null &&
                     prim.Textures.DefaultTexture.TextureID != UUID.Zero)
-                    textureId = prim.Textures.DefaultTexture.TextureID.ToString();
+                    defaultTextureId = prim.Textures.DefaultTexture.TextureID.ToString();
 
                 await caller.SendAsync("ObjectUpdate", new
                 {
@@ -50,8 +72,27 @@ public class ViewerHub : Hub
                     Position = new { X = prim.Position.X, Y = prim.Position.Y, Z = prim.Position.Z },
                     Rotation = new { X = prim.Rotation.X, Y = prim.Rotation.Y, Z = prim.Rotation.Z, W = prim.Rotation.W },
                     Scale = new { X = prim.Scale.X, Y = prim.Scale.Y, Z = prim.Scale.Z },
-                    PCode = (int)prim.PrimData.ProfileCurve,
-                    TextureId = textureId
+                    // Correct: PrimType (Box=1, Cylinder=2, Prism=3, Sphere=4, Torus=5, Tube=6, Ring=7, Sculpt=8, Mesh=9)
+                    PrimType = (int)prim.Type,
+                    TextureId = defaultTextureId,
+                    Faces = faceTextures,
+                    // Profile/Path data for advanced shape reconstruction
+                    ProfileCurve = (int)prim.PrimData.ProfileCurve,
+                    PathCurve = (int)prim.PrimData.PathCurve,
+                    ProfileBegin = prim.PrimData.ProfileBegin,
+                    ProfileEnd = prim.PrimData.ProfileEnd,
+                    ProfileHollow = prim.PrimData.ProfileHollow,
+                    PathBegin = prim.PrimData.PathBegin,
+                    PathEnd = prim.PrimData.PathEnd,
+                    PathScaleX = prim.PrimData.PathScaleX,
+                    PathScaleY = prim.PrimData.PathScaleY,
+                    PathShearX = prim.PrimData.PathShearX,
+                    PathShearY = prim.PrimData.PathShearY,
+                    PathTaperX = prim.PrimData.PathTaperX,
+                    PathTaperY = prim.PrimData.PathTaperY,
+                    PathTwist = prim.PrimData.PathTwist,
+                    PathTwistBegin = prim.PrimData.PathTwistBegin,
+                    PathRevolutions = prim.PrimData.PathRevolutions,
                 });
             }
             catch (Exception ex) { Console.WriteLine($"[ViewerHub] ObjectUpdate error: {ex.Message}"); }
@@ -100,7 +141,7 @@ public class ViewerHub : Hub
             catch { }
         };
 
-        // Send connected event
+        // Send connected
         await caller.SendAsync("AvatarConnected", new
         {
             AvatarId = avatarId,
@@ -108,7 +149,7 @@ public class ViewerHub : Hub
             Position = new { X = client.Self.SimPosition.X, Y = client.Self.SimPosition.Y, Z = client.Self.SimPosition.Z }
         });
 
-        // Send initial friends list
+        // Send friends list
         try
         {
             var friendListField = client.Friends.GetType().GetField("FriendList",

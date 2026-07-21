@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 
 /**
- * Core 3D scene manager. Owns the renderer, scene, camera, and render loop.
+ * Core 3D scene manager. Owns the renderer, scene, camera, water, and render loop.
  */
 export class SceneManager {
   public scene: THREE.Scene;
   public camera: THREE.PerspectiveCamera;
   public renderer: THREE.WebGLRenderer;
   public clock: THREE.Clock;
+  public water: THREE.Mesh;
 
   constructor(container: HTMLElement) {
     // Scene
@@ -35,6 +36,22 @@ export class SceneManager {
     container.appendChild(this.renderer.domElement);
 
     this.clock = new THREE.Clock();
+
+    // Water plane at SL sea level (z=20.0 in SL = y=20.0 in Three.js)
+    const waterGeo = new THREE.PlaneGeometry(4096, 4096);
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x006994,
+      transparent: true,
+      opacity: 0.7,
+      roughness: 0.1,
+      metalness: 0.3,
+      side: THREE.DoubleSide,
+    });
+    this.water = new THREE.Mesh(waterGeo, waterMat);
+    this.water.rotation.x = -Math.PI / 2;
+    this.water.position.y = 20; // SL sea level
+    this.water.receiveShadow = true;
+    this.scene.add(this.water);
 
     // Default lighting
     this.setupLighting();

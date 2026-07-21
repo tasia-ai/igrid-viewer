@@ -17,7 +17,7 @@ export class GridClient {
   private terrain: TerrainRenderer;
   private objects: ObjectRenderer;
   private avatars: AvatarRenderer;
-  private camera: CameraController;
+  public camera: CameraController;
   public materialLoader: PBRMaterialLoader;
   private _connected = false;
 
@@ -67,8 +67,9 @@ export class GridClient {
         position: data.position,
         rotation: data.rotation,
         scale: data.scale,
-        pcode: data.pCode,
+        primType: data.primType,
         textureId: data.textureId,
+        faces: data.faces,
       });
     });
 

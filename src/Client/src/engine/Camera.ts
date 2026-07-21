@@ -1,81 +1,126 @@
 import * as THREE from 'three';
 
 /**
- * Orbit camera controller. Right-click drag to rotate, scroll to zoom.
+ * Camera controller for SL-style fly camera.
+ * Right-click drag: orbit around target
+ * Scroll: zoom
+ * WASD: fly (relative to camera direction)
+ * Space/Ctrl: fly up/down
  */
 export class CameraController {
   private camera: THREE.PerspectiveCamera;
-  private target: THREE.Vector3 = new THREE.Vector3();
-  private distance: number = 20;
-  private phi: number = Math.PI / 4;    // Vertical angle from top
-  private theta: number = 0;            // Horizontal rotation
-  private isDragging: boolean = false;
+  private domElement: HTMLElement;
+  private target = new THREE.Vector3(0, 10, 0);
+  private distance = 30;
+  private phi = Math.PI / 4; // elevation angle
+  private theta = 0; // azimuth angle
+  private isDragging = false;
   private lastMouse = { x: 0, y: 0 };
+  private keys = new Set<string>();
+  private flySpeed = 20; // units per second
 
   constructor(camera: THREE.PerspectiveCamera, domElement: HTMLElement) {
     this.camera = camera;
-    this.setupControls(domElement);
-    this.update();
+    this.domElement = domElement;
+    this.setupListeners();
+    this.updateCamera();
   }
 
-  private setupControls(domElement: HTMLElement): void {
-    // Right-click drag to orbit
-    domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+  setTarget(pos: THREE.Vector3) {
+    this.target.copy(pos);
+    this.updateCamera();
+  }
 
-    domElement.addEventListener('mousedown', (e) => {
-      if (e.button === 2) { // Right click
+  setTargetFromSL(x: number, y: number, z: number) {
+    // SL coords: X=forward, Y=left, Z=up → Three.js: X=right, Y=up, Z=forward
+    this.target.set(x, z, y);
+    this.updateCamera();
+  }
+
+  update(deltaTime: number) {
+    if (this.keys.size === 0) return;
+
+    // Calculate forward/right vectors from camera angles
+    const forward = new THREE.Vector3(
+      Math.sin(this.theta) * Math.cos(this.phi),
+      Math.sin(this.phi),
+      Math.cos(this.theta) * Math.cos(this.phi)
+    ).normalize();
+
+    const right = new THREE.Vector3(
+      Math.cos(this.theta),
+      0,
+      -Math.sin(this.theta)
+    ).normalize();
+
+    const up = new THREE.Vector3(0, 1, 0);
+    const speed = this.flySpeed * deltaTime;
+
+    const move = new THREE.Vector3(0, 0, 0);
+    if (this.keys.has('KeyW')) move.add(forward);
+    if (this.keys.has('KeyS')) move.sub(forward);
+    if (this.keys.has('KeyD')) move.add(right);
+    if (this.keys.has('KeyA')) move.sub(right);
+    if (this.keys.has('Space')) move.add(up);
+    if (this.keys.has('ControlLeft') || this.keys.has('ControlRight')) move.sub(up);
+
+    if (move.lengthSq() > 0) {
+      move.normalize().multiplyScalar(speed);
+      this.target.add(move);
+      this.updateCamera();
+    }
+  }
+
+  private updateCamera() {
+    const x = this.target.x + this.distance * Math.sin(this.theta) * Math.cos(this.phi);
+    const y = this.target.y + this.distance * Math.sin(this.phi);
+    const z = this.target.z + this.distance * Math.cos(this.theta) * Math.cos(this.phi);
+    this.camera.position.set(x, y, z);
+    this.camera.lookAt(this.target);
+  }
+
+  private setupListeners() {
+    // Right-click drag = orbit
+    this.domElement.addEventListener('mousedown', (e) => {
+      if (e.button === 2) {
         this.isDragging = true;
-        this.lastMouse = { x: e.clientX, y: e.clientY };
+        this.lastMouse.x = e.clientX;
+        this.lastMouse.y = e.clientY;
       }
     });
 
-    domElement.addEventListener('mousemove', (e) => {
+    window.addEventListener('mousemove', (e) => {
       if (!this.isDragging) return;
       const dx = e.clientX - this.lastMouse.x;
       const dy = e.clientY - this.lastMouse.y;
+      this.lastMouse.x = e.clientX;
+      this.lastMouse.y = e.clientY;
+
       this.theta -= dx * 0.005;
-      this.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.phi + dy * 0.005));
-      this.lastMouse = { x: e.clientX, y: e.clientY };
-      this.update();
+      this.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.01, this.phi + dy * 0.005));
+      this.updateCamera();
     });
 
-    domElement.addEventListener('mouseup', (e) => {
+    window.addEventListener('mouseup', (e) => {
       if (e.button === 2) this.isDragging = false;
     });
 
-    domElement.addEventListener('mouseleave', () => {
-      this.isDragging = false;
+    // Scroll = zoom
+    this.domElement.addEventListener('wheel', (e) => {
+      this.distance = Math.max(2, Math.min(200, this.distance + e.deltaY * 0.05));
+      this.updateCamera();
     });
 
-    // Scroll to zoom
-    domElement.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      this.distance = Math.max(1, Math.min(500, this.distance + e.deltaY * 0.05));
-      this.update();
-    }, { passive: false });
-  }
+    // WASD keys
+    window.addEventListener('keydown', (e) => {
+      this.keys.add(e.code);
+    });
 
-  /**
-   * Set the orbit target position (e.g., avatar position).
-   */
-  setTarget(pos: THREE.Vector3): void {
-    this.target.copy(pos);
-    this.update();
-  }
+    window.addEventListener('keyup', (e) => {
+      this.keys.delete(e.code);
+    });
 
-  getTarget(): THREE.Vector3 {
-    return this.target.clone();
-  }
-
-  private update(): void {
-    const x = this.distance * Math.sin(this.phi) * Math.cos(this.theta);
-    const y = this.distance * Math.cos(this.phi);
-    const z = this.distance * Math.sin(this.phi) * Math.sin(this.theta);
-    this.camera.position.set(
-      this.target.x + x,
-      this.target.y + y,
-      this.target.z + z
-    );
-    this.camera.lookAt(this.target);
+    // Prevent context menu
+    this.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 }

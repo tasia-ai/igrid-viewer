@@ -267,8 +267,10 @@ connectBtn.addEventListener('click', async () => {
     avatarPanel.style.display = 'none';
     hud.style.display = 'flex';
 
-    // Start render loop
-    sceneManager.animate();
+    // Start render loop with camera movement
+    sceneManager.animate((delta) => {
+      gridClient?.camera?.update(delta);
+    });
   } catch (err) {
     console.error('Failed to connect:', err);
   }
