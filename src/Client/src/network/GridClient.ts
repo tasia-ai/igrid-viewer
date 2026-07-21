@@ -92,12 +92,13 @@ export class GridClient {
       }
     });
 
-    hub.on('AvatarUpdate', (data: any) => {
-      this.avatars.updateAvatar({
+    hub.on('AvatarUpdate', async (data: any) => {
+      await this.avatars.updateAvatar({
         id: data.id,
         name: data.name,
         position: data.position,
         rotation: data.rotation,
+        bakedTextures: data.bakedTextures,
       });
     });
 
