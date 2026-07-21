@@ -33,6 +33,7 @@ const DEFAULT_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xcccccc, rough
 export class ObjectRenderer {
   private scene: THREE.Scene;
   private objects: Map<string, THREE.Object3D> = new Map();
+  private pendingMeshes = new Map<string, ArrayBuffer>(); // Queue for mesh data before prim exists
   private materialLoader: PBRMaterialLoader;
   private meshDecoder = new SLMeshDecoder();
 
@@ -88,6 +89,13 @@ export class ObjectRenderer {
     this.scene.add(group);
     this.objects.set(prim.id, group);
 
+    // Check if mesh data arrived before prim was created (timing fix)
+    if (this.pendingMeshes.has(prim.id)) {
+      const meshData = this.pendingMeshes.get(prim.id)!;
+      this.pendingMeshes.delete(prim.id);
+      this.replaceMeshGeometry(prim.id, meshData);
+    }
+
     // Load texture in BACKGROUND (non-blocking!) — swap material when done
     const texId = prim.textureId || (prim.faces?.[0] as any)?.TextureId;
     if (texId && texId !== '00000000-0000-0000-0000-000000000000') {
@@ -130,7 +138,11 @@ export class ObjectRenderer {
    */
   async replaceMeshGeometry(primId: string, meshData: ArrayBuffer): Promise<void> {
     const group = this.objects.get(primId);
-    if (!group) { console.log(`[ObjectRenderer] replaceMeshGeometry: prim ${primId} not found`); return; }
+    if (!group) {
+      // Queue mesh data for when prim appears
+      this.pendingMeshes.set(primId, meshData);
+      return;
+    }
 
     console.log(`[ObjectRenderer] Replacing mesh for ${primId}, ${meshData.byteLength} bytes`);
     try {
