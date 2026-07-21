@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I-Grid Viewer</title>
+  <link rel="stylesheet" href="bootstrap.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0a; }
+    #viewport { width: 100vw; height: 100vh; display: block; }
+    .overlay { position: absolute; z-index: 10; }
+    #login-panel {
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(10, 22, 40, 0.95); padding: 2.5rem; border-radius: 12px;
+      color: #e0e0e0; min-width: 340px; border: 1px solid rgba(79, 195, 247, 0.3);
+      box-shadow: 0 0 40px rgba(79, 195, 247, 0.1);
+    }
+    #login-panel h2 { text-align: center; color: #4fc3f7; margin-bottom: 1.5rem; font-size: 1.8rem; }
+    #login-panel input { margin-bottom: 0.8rem; }
+    #login-panel .error { color: #ef5350; font-size: 0.85rem; margin-top: 0.5rem; display: none; }
+    #avatar-panel {
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(10, 22, 40, 0.95); padding: 2rem; border-radius: 12px;
+      color: #e0e0e0; min-width: 340px; border: 1px solid rgba(79, 195, 247, 0.3);
+    }
+    #avatar-panel h3 { color: #4fc3f7; margin-bottom: 1rem; }
+    #avatar-list { list-style: none; padding: 0; }
+    #avatar-list li {
+      padding: 0.8rem 1rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.05);
+      border-radius: 8px; cursor: pointer; transition: background 0.2s;
+      border: 1px solid transparent;
+    }
+    #avatar-list li:hover { background: rgba(79, 195, 247, 0.15); border-color: rgba(79, 195, 247, 0.3); }
+    #avatar-list li.selected { background: rgba(79, 195, 247, 0.25); border-color: #4fc3f7; }
+    #avatar-list .avatar-name { font-weight: 600; }
+    #hud {
+      position: absolute; bottom: 10px; left: 10px; right: 10px;
+      display: flex; gap: 10px; align-items: flex-end; pointer-events: none;
+    }
+    #chat-panel {
+      flex: 1; max-width: 400px; background: rgba(0,0,0,0.75); color: #ccc;
+      border-radius: 8px; padding: 10px; pointer-events: all;
+    }
+    #chat-messages { height: 120px; overflow-y: auto; font-size: 13px; line-height: 1.4; }
+    #chat-messages .chat-line { margin-bottom: 2px; }
+    #chat-messages .chat-name { color: #4fc3f7; font-weight: 600; }
+    #chat-form { display: flex; gap: 5px; margin-top: 5px; }
+    #chat-input { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 5px 10px; border-radius: 4px; }
+    #minimap {
+      width: 180px; height: 180px; background: rgba(0,0,0,0.7);
+      border-radius: 8px; overflow: hidden; pointer-events: all;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    #minimap canvas { width: 100%; height: 100%; }
+    #position-info {
+      position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6);
+      color: #aaa; padding: 5px 10px; border-radius: 4px; font-size: 12px;
+      font-family: monospace;
+    }
+    .btn-primary { background: #4fc3f7; border-color: #4fc3f7; color: #0a1628; font-weight: 600; }
+    .btn-primary:hover { background: #29b6f6; }
+    .form-control { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); color: white; }
+    .form-control:focus { background: rgba(255,255,255,0.12); border-color: #4fc3f7; color: white; box-shadow: 0 0 0 0.2rem rgba(79,195,247,0.25); }
+    .form-control::placeholder { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="viewport"></div>
+
+  <!-- Login -->
+  <div id="login-panel" class="overlay">
+    <h2>&#10022; I-Grid &#10022;</h2>
+    <form id="login-form">
+      <input id="username" class="form-control" placeholder="Username" required autocomplete="username">
+      <input id="password" type="password" class="form-control" placeholder="Password" required autocomplete="current-password">
+      <button type="submit" class="btn btn-primary w-100 mt-2">Login</button>
+      <div id="login-error" class="error"></div>
+    </form>
+  </div>
+
+  <!-- Avatar selection -->
+  <div id="avatar-panel" class="overlay" style="display:none">
+    <h3>Select Avatar</h3>
+    <ul id="avatar-list"></ul>
+    <button id="connect-btn" class="btn btn-primary w-100 mt-2" disabled>Enter World</button>
+    <button id="logout-btn" class="btn btn-outline-secondary w-100 mt-2" style="font-size:0.85rem">Logout</button>
+  </div>
+
+  <!-- HUD (hidden until connected) -->
+  <div id="hud" style="display:none">
+    <div id="position-info">0, 0, 0</div>
+    <div id="chat-panel">
+      <div id="chat-messages"></div>
+      <form id="chat-form">
+        <input id="chat-input" class="form-control" placeholder="Say something..." autocomplete="off">
+      </form>
+    </div>
+    <div id="minimap"><canvas id="minimap-canvas" width="180" height="180"></canvas></div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
