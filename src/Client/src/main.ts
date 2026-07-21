@@ -17,6 +17,7 @@ const avatarList = document.getElementById('avatar-list')!;
 const connectBtn = document.getElementById('connect-btn') as HTMLButtonElement;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
 const switchAvatarBtn = document.getElementById('switch-avatar-btn') as HTMLButtonElement;
+const reconnectBtn = document.getElementById('reconnect-btn') as HTMLButtonElement;
 const siteLogoutBtn = document.getElementById('site-logout-btn') as HTMLButtonElement;
 const topBar = document.getElementById('top-bar')!;
 const regionName = document.getElementById('region-name')!;
@@ -233,6 +234,44 @@ connectBtn.addEventListener('click', async () => {
     showWorldUI();
     sceneManager.animate((delta) => gridClient?.camera?.update(delta));
   } catch (err) { console.error('Connect failed:', err); }
+});
+
+// === RECONNECT (from top bar) ===
+reconnectBtn.addEventListener('click', async () => {
+  if (!selectedAvatarId) return;
+  // Disconnect current
+  if (gridClient) { await gridClient.stop(); gridClient = null; }
+  if (sceneManager) { sceneManager.renderer.dispose(); viewport.innerHTML = ''; sceneManager = null; }
+  minimap = null;
+  hideWorldUI();
+  // Reconnect
+  showPreloader('Reconnecting...');
+  sceneManager = new SceneManager(viewport);
+  minimap = new MinimapRenderer(minimapCanvas);
+  gridClient = new GridClient(sceneManager, authToken, window.location.origin,
+    (from, msg) => addChatMessage(from, msg),
+    (x, y, z) => { positionDisplay.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}`; minimap?.setPlayerPosition(x, y); },
+    undefined,
+    (id, name, online) => { friends.set(id, { id, name, online }); renderFriends(); },
+    (from, msg, fid) => { addIMMessage(from, msg, fid); },
+    (x, y, h) => { minimap?.updatePatch(x, y, h); },
+    (rname, rx, ry) => { regionName.textContent = `☀ ${rname}`; parcelName.textContent = `(${rx}, ${ry})`; },
+    (pname) => { parcelName.textContent = pname; },
+    (balance) => { currencyDisplay.textContent = `${currencySym} ${balance.toLocaleString()}`; },
+    (sym) => { currencySym = sym; },
+    (otherId, otherName, messages) => { if (!convos.has(otherId)) convos.set(otherId, { friendId: otherId, friendName: otherName, messages: [], unread: 0 }); const conv = convos.get(otherId)!; for (const m of messages) conv.messages.push({ from: m.from, text: m.text, time: new Date(m.time) }); renderFriends(); },
+  );
+  try {
+    await gridClient.start();
+    await gridClient.connectAvatar(selectedAvatarId);
+    hidePreloader();
+    showWorldUI();
+    sceneManager.animate((delta) => gridClient?.camera?.update(delta));
+  } catch (err) {
+    hidePreloader();
+    console.error('Reconnect failed:', err);
+    addChatMessage('System', 'Reconnect failed. Try again.');
+  }
 });
 
 // === SWITCH AVATAR (from top bar) ===
