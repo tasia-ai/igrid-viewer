@@ -76,17 +76,31 @@ export class GridClient {
       }).catch(err => console.warn('[Grid] updatePrim error:', err));
     });
 
-    hub.on('MeshData', (data: any) => {
-      // Decode base64 mesh data and store it for the corresponding prim
+    hub.on('MeshData', async (data: any) => {
       try {
-        const meshData = Uint8Array.from(atob(data.data), c => c.charCodeAt(0));
+        const meshBytes = Uint8Array.from(atob(data.data), c => c.charCodeAt(0));
         const primObj = this.objects.getPrim(data.id);
-        if (primObj) {
-          // Store mesh data on the prim for later use
-          primObj.userData.meshData = meshData.buffer;
-        }
+        if (!primObj) return;
+
+        // Decode SL mesh into Three.js geometry
+        const { SLMeshDecoder } = await import('../engine/SLMeshDecoder');
+        const decoder = new SLMeshDecoder();
+        const geometry = await decoder.decode(meshBytes.buffer);
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+
+        // Replace geometry on existing mesh
+        primObj.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+            child.geometry = geometry;
+            console.log(`[Grid] Mesh loaded for ${data.id}: ${geometry.attributes.position.count} vertices`);
+          }
+        });
+
+        primObj.userData.meshData = meshBytes.buffer;
       } catch (err) {
-        console.warn('[Grid] Failed to decode mesh data:', err);
+        console.warn('[Grid] Failed to decode mesh:', err);
       }
     });
 
