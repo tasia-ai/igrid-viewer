@@ -8,6 +8,18 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { overflow:hidden; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0a0a0a; color:#ccc; }
+
+    /* PRELOADER */
+    #preloader { position:fixed; top:0; left:0; width:100vw; height:100vh; background:#0a0e14; z-index:9999; display:flex; align-items:center; justify-content:center; transition: opacity 0.6s ease; }
+    #preloader.hidden { opacity:0; pointer-events:none; }
+    .preloader-content { text-align:center; }
+    .preloader-logo { font-size:2.5rem; color:#6ab0ff; font-weight:700; letter-spacing:4px; margin-bottom:30px; animation: pulse 2s ease-in-out infinite; }
+    .preloader-bar { width:240px; height:3px; background:rgba(255,255,255,0.1); border-radius:2px; margin:0 auto 15px; overflow:hidden; }
+    .preloader-fill { width:0%; height:100%; background:linear-gradient(90deg, #3a7bd5, #6ab0ff); border-radius:2px; animation: load 2.5s ease-in-out forwards; }
+    .preloader-text { font-size:0.8rem; color:#556; letter-spacing:1px; }
+    @keyframes pulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
+    @keyframes load { 0% { width:0%; } 50% { width:70%; } 100% { width:100%; } }
+
     #viewport { width:100vw; height:100vh; display:block; position:absolute; top:0; left:0; z-index:0; }
 
     /* === LOGIN === */
@@ -131,6 +143,15 @@
 </head>
 <body>
   <div id="viewport"></div>
+
+  <!-- PRELOADER -->
+  <div id="preloader">
+    <div class="preloader-content">
+      <div class="preloader-logo">✦ I-Grid ✦</div>
+      <div class="preloader-bar"><div class="preloader-fill"></div></div>
+      <div class="preloader-text">Loading world...</div>
+    </div>
+  </div>
 
   <!-- LOGIN -->
   <div id="login-panel">

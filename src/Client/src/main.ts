@@ -42,6 +42,25 @@ let selectedAvatarId: number | null = null;
 let isRegisterMode = false;
 let currencySym = 'Currency';
 
+// === PRELOADER ===
+const preloader = document.getElementById('preloader')!;
+// Hide preloader after page loads
+window.addEventListener('load', () => {
+  setTimeout(() => { preloader.classList.add('hidden'); }, 2800);
+});
+
+function showPreloader(text: string) {
+  const preloaderText = preloader.querySelector('.preloader-text') as HTMLElement;
+  if (preloaderText) preloaderText.textContent = text;
+  const fill = preloader.querySelector('.preloader-fill') as HTMLElement;
+  if (fill) { fill.style.animation = 'none'; fill.offsetHeight; fill.style.animation = 'load 3s ease-in-out forwards'; }
+  preloader.classList.remove('hidden');
+}
+
+function hidePreloader() {
+  preloader.classList.add('hidden');
+}
+
 // === AUTH ===
 toggleAuth.addEventListener('click', (e) => {
   e.preventDefault();
@@ -194,8 +213,11 @@ connectBtn.addEventListener('click', async () => {
     },
   );
   try {
+    showPreloader('Connecting to grid...');
     await gridClient.start();
+    showPreloader('Entering world...');
     await gridClient.connectAvatar(selectedAvatarId);
+    hidePreloader();
     showWorldUI();
     sceneManager.animate((delta) => gridClient?.camera?.update(delta));
   } catch (err) { console.error('Connect failed:', err); }
