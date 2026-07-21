@@ -70,6 +70,20 @@ export class GridClient {
       });
     });
 
+    hub.on('MeshData', (data: any) => {
+      // Decode base64 mesh data and store it for the corresponding prim
+      try {
+        const meshData = Uint8Array.from(atob(data.data), c => c.charCodeAt(0));
+        const primObj = this.objects.getPrim(data.id);
+        if (primObj) {
+          // Store mesh data on the prim for later use
+          primObj.userData.meshData = meshData.buffer;
+        }
+      } catch (err) {
+        console.warn('[Grid] Failed to decode mesh data:', err);
+      }
+    });
+
     hub.on('AvatarUpdate', (data: any) => {
       this.avatars.updateAvatar({
         id: data.id,

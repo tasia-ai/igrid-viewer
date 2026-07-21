@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using OpenMetaverse;
+using OpenMetaverse.Assets;
 using IGrid.Server.Services;
 
 namespace IGrid.Server.Hubs;
@@ -51,7 +52,23 @@ public class ViewerHub : Hub
                 textureId = prim.Textures.DefaultTexture.TextureID.ToString();
             }
 
-            await Clients.Caller.SendAsync("ObjectUpdate", new
+            // For mesh objects, request the mesh asset via the SculptTexture UUID
+            byte[]? meshData = null;
+            if (prim.Sculpt != null &&
+                prim.Sculpt.Type == SculptType.Mesh &&
+                prim.Sculpt.SculptTexture != UUID.Zero)
+            {
+                try
+                {
+                    meshData = await RequestMeshAssetAsync(client, prim.Sculpt.SculptTexture);
+                }
+                catch
+                {
+                    // Mesh not available — continue without it
+                }
+            }
+
+            var objData = new
             {
                 Id = prim.ID.ToString(),
                 Name = prim.Properties?.Name ?? "",
@@ -60,7 +77,20 @@ public class ViewerHub : Hub
                 Scale = new { X = prim.Scale.X, Y = prim.Scale.Y, Z = prim.Scale.Z },
                 PCode = (int)primData.ProfileCurve,
                 TextureId = textureId
-            });
+            };
+
+            // Send object update
+            await Clients.Caller.SendAsync("ObjectUpdate", objData);
+
+            // Send mesh data separately if available
+            if (meshData != null && meshData.Length > 0)
+            {
+                await Clients.Caller.SendAsync("MeshData", new
+                {
+                    Id = prim.ID.ToString(),
+                    Data = Convert.ToBase64String(meshData)
+                });
+            }
         };
 
         // Avatar position updates
@@ -145,6 +175,26 @@ public class ViewerHub : Hub
         {
             await Clients.Caller.SendAsync("Error", "Teleport failed");
         }
+    }
+
+    /// <summary>
+    /// Request a mesh asset from the grid and return the raw bytes.
+    /// Callback: MeshDownloadCallback(bool success, AssetMesh assetMesh)
+    /// </summary>
+    private Task<byte[]?> RequestMeshAssetAsync(GridClient client, UUID meshId)
+    {
+        var tcs = new TaskCompletionSource<byte[]?>();
+
+        client.Assets.RequestMesh(meshId,
+            (bool success, AssetMesh assetMesh) =>
+            {
+                if (success && assetMesh?.AssetData != null && assetMesh.AssetData.Length > 0)
+                    tcs.TrySetResult(assetMesh.AssetData);
+                else
+                    tcs.TrySetResult(null);
+            });
+
+        return tcs.Task;
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

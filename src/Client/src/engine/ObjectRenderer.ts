@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PBRMaterialLoader, SLTextureFace } from './PBRMaterialLoader';
+import { SLMeshDecoder } from './SLMeshDecoder';
 
 /**
  * Rendered object data from LibreMetaverse.
@@ -12,17 +13,21 @@ export interface PrimData {
   scale: { x: number; y: number; z: number };
   pcode: number;
   textureId?: string;
+  /** Raw mesh asset data for mesh prims (pcode 9). */
+  meshData?: ArrayBuffer;
 }
 
 /**
  * Renders SL/OpenSim primitives and mesh objects in the scene.
  * Converts LibreMetaverse coordinate system (Y-up) to Three.js (Y-up, Z-forward).
  * Uses PBR materials when texture data is available.
+ * Decodes SL mesh format for mesh primitives (pcode 9).
  */
 export class ObjectRenderer {
   private scene: THREE.Scene;
   private objects: Map<string, THREE.Object3D> = new Map();
   private materialLoader: PBRMaterialLoader;
+  private meshDecoder = new SLMeshDecoder();
 
   constructor(scene: THREE.Scene, materialLoader: PBRMaterialLoader) {
     this.scene = scene;
@@ -74,9 +79,8 @@ export class ObjectRenderer {
       case 6: // Ring
         geometry = new THREE.RingGeometry(0.3, 0.5, 32);
         break;
-      case 9: // Mesh
-        // TODO: decode SL mesh asset data from server
-        geometry = new THREE.BoxGeometry(1, 1, 1);
+      case 9: // SL Mesh — decode binary mesh asset
+        geometry = await this.decodeMesh(prim.meshData);
         break;
       default:
         geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -108,6 +112,26 @@ export class ObjectRenderer {
     return mesh;
   }
 
+  /**
+   * Decode SL mesh binary data into Three.js BufferGeometry.
+   */
+  private async decodeMesh(meshData?: ArrayBuffer): Promise<THREE.BufferGeometry> {
+    if (!meshData || meshData.byteLength === 0) {
+      // Fallback to a simple box if no mesh data
+      return new THREE.BoxGeometry(1, 1, 1);
+    }
+
+    try {
+      const geometry = this.meshDecoder.decode(meshData);
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+      return geometry;
+    } catch (err) {
+      console.warn('[ObjectRenderer] Failed to decode SL mesh:', err);
+      return new THREE.BoxGeometry(1, 1, 1);
+    }
+  }
+
   private disposeObject(obj: THREE.Object3D): void {
     obj.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -119,6 +143,10 @@ export class ObjectRenderer {
         }
       }
     });
+  }
+
+  getPrim(id: string): THREE.Object3D | undefined {
+    return this.objects.get(id);
   }
 
   removePrim(id: string): void {
