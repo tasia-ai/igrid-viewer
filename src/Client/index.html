@@ -47,6 +47,15 @@
     #chat-messages .chat-name { color: #4fc3f7; font-weight: 600; }
     #chat-form { display: flex; gap: 5px; margin-top: 5px; }
     #chat-input { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 5px 10px; border-radius: 4px; }
+    #teleport-panel {
+      pointer-events: all;
+    }
+    #teleport-form {
+      display: flex; gap: 5px;
+    }
+    #teleport-input {
+      width: 180px; background: rgba(0,0,0,0.75); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px;
+    }
     #minimap {
       width: 180px; height: 180px; background: rgba(0,0,0,0.7);
       border-radius: 8px; overflow: hidden; pointer-events: all;
@@ -94,6 +103,12 @@
       <div id="chat-messages"></div>
       <form id="chat-form">
         <input id="chat-input" class="form-control" placeholder="Say something..." autocomplete="off">
+      </form>
+    </div>
+    <div id="teleport-panel">
+      <form id="teleport-form">
+        <input id="teleport-input" class="form-control" placeholder="Teleport to region..." autocomplete="off">
+        <button type="submit" class="btn btn-primary btn-sm">TP</button>
       </form>
     </div>
     <div id="minimap"><canvas id="minimap-canvas" width="180" height="180"></canvas></div>

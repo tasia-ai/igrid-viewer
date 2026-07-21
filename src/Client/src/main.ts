@@ -1,5 +1,6 @@
 import { SceneManager } from './engine/SceneManager';
 import { GridClient } from './network/GridClient';
+import { MinimapRenderer } from './engine/MinimapRenderer';
 
 // DOM elements
 const viewport = document.getElementById('viewport')!;
@@ -16,11 +17,14 @@ const chatForm = document.getElementById('chat-form') as HTMLFormElement;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 const positionInfo = document.getElementById('position-info')!;
 const minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
+const teleportForm = document.getElementById('teleport-form') as HTMLFormElement;
+const teleportInput = document.getElementById('teleport-input') as HTMLInputElement;
 
 // State
 let authToken: string = '';
 let gridClient: GridClient | null = null;
 let sceneManager: SceneManager | null = null;
+let minimap: MinimapRenderer | null = null;
 let selectedAvatarId: number | null = null;
 
 // --- Login ---
@@ -102,6 +106,9 @@ connectBtn.addEventListener('click', async () => {
   // Initialize 3D scene
   sceneManager = new SceneManager(viewport);
 
+  // Initialize minimap
+  minimap = new MinimapRenderer(minimapCanvas);
+
   // Pass base URL for texture proxy
   const baseUrl = window.location.origin;
 
@@ -113,6 +120,8 @@ connectBtn.addEventListener('click', async () => {
     (from, message) => addChatMessage(from, message),
     (x, y, z) => {
       positionInfo.textContent = `${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`;
+      // Update minimap player position
+      minimap?.setPlayerPosition(x, y);
     }
   );
 
@@ -150,6 +159,7 @@ logoutBtn.addEventListener('click', async () => {
     viewport.innerHTML = '';
     sceneManager = null;
   }
+  minimap = null;
 });
 
 // --- Chat ---
@@ -176,21 +186,23 @@ function addChatMessage(from: string, message: string): void {
   }
 }
 
+// --- Teleport ---
+teleportForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const regionName = teleportInput.value.trim();
+  if (!regionName || !gridClient) return;
+
+  try {
+    await gridClient.teleport(regionName);
+    teleportInput.value = '';
+    addChatMessage('System', `Teleporting to ${regionName}...`);
+  } catch (err) {
+    addChatMessage('System', 'Teleport failed');
+  }
+});
+
 function escapeHtml(str: string): string {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
-
-// --- Minimap (placeholder until real map tiles are loaded) ---
-function drawMinimap(): void {
-  const ctx = minimapCanvas.getContext('2d');
-  if (!ctx) return;
-  ctx.fillStyle = '#1a1a2e';
-  ctx.fillRect(0, 0, 180, 180);
-  ctx.fillStyle = '#4fc3f7';
-  ctx.font = '12px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Minimap', 90, 90);
-}
-drawMinimap();
