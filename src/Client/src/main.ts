@@ -17,6 +17,7 @@ const avatarList = document.getElementById('avatar-list')!;
 const connectBtn = document.getElementById('connect-btn') as HTMLButtonElement;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
 const switchAvatarBtn = document.getElementById('switch-avatar-btn') as HTMLButtonElement;
+const siteLogoutBtn = document.getElementById('site-logout-btn') as HTMLButtonElement;
 const topBar = document.getElementById('top-bar')!;
 const regionName = document.getElementById('region-name')!;
 const parcelName = document.getElementById('parcel-name')!;
@@ -96,7 +97,9 @@ loginForm.addEventListener('submit', async (e) => {
       if (!lr.ok) { showError('Account created! Now login.'); isRegisterMode = false; authBtn.textContent = 'Login'; confirmPasswordInput.style.display = 'none'; betaKeyInput.style.display = 'none'; toggleAuth.textContent = "Don't have an account? Register"; return; }
       authToken = (await lr.json()).token;
     } else { authToken = data.token; }
+
     loginPanel.style.display = 'none';
+    document.getElementById('account-username')!.textContent = username;
     await loadAvatars();
   } catch { showError('Connection error'); }
 });
@@ -121,6 +124,15 @@ async function loadAvatars() {
     }
   } catch { avatarList.innerHTML = '<li style="color:#ef5350;text-align:center">Error loading avatars</li>'; }
 }
+
+// === SITE LOGOUT (from avatar panel) ===
+siteLogoutBtn.addEventListener('click', () => {
+  authToken = '';
+  selectedAvatarId = null;
+  avatarPanel.style.display = 'none';
+  loginPanel.style.display = 'block';
+  loginForm.reset();
+});
 
 // Create avatar
 const createAvatarBtn = document.getElementById('create-avatar-btn') as HTMLButtonElement;
