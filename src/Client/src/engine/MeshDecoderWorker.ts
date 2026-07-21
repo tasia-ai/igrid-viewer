@@ -19,15 +19,13 @@ interface DecodeResult {
 
 const ctx = self as unknown as Worker;
 
-// Simple message-based protocol
-ctx.onmessage = (e: MessageEvent<{ id: string; data: ArrayBuffer }>) => {
+ctx.onmessage = async (e: MessageEvent<{ id: string; data: ArrayBuffer }>) => {
   const { id, data } = e.data;
 
   try {
     const decoder = new SLMeshDecoder();
-    const geometry = decoder.decode(data);
+    const geometry = await decoder.decode(data);
 
-    // Extract geometry data for transfer
     const positionAttr = geometry.attributes.position;
     const normalAttr = geometry.attributes.normal;
     const uvAttr = geometry.attributes.uv;
@@ -48,8 +46,7 @@ ctx.onmessage = (e: MessageEvent<{ id: string; data: ArrayBuffer }>) => {
       result.indices = Uint32Array.from((indexAttr as any).array);
     }
 
-    // Transfer the array buffers
-    const transferables: Transferable[] = [];
+    const transferables: any[] = [];
     if (result.positions) transferables.push(result.positions.buffer);
     if (result.normals) transferables.push(result.normals.buffer);
     if (result.uvs) transferables.push(result.uvs.buffer);
@@ -65,5 +62,4 @@ ctx.onmessage = (e: MessageEvent<{ id: string; data: ArrayBuffer }>) => {
   }
 };
 
-// Export for TypeScript (not actually used in worker context)
 export {};

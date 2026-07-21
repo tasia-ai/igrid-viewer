@@ -34,12 +34,12 @@ export class AvatarRenderer {
   /**
    * Add or update an avatar in the scene.
    */
-  updateAvatar(data: AvatarData): void {
+  async updateAvatar(data: AvatarData): Promise<void> {
     let group = this.avatars.get(data.id);
 
     if (!group) {
       if (data.meshData) {
-        group = this.createMeshAvatar(data);
+        group = await this.createMeshAvatar(data);
       } else {
         group = this.createPlaceholder(data.name);
       }
@@ -55,7 +55,7 @@ export class AvatarRenderer {
   /**
    * Create a mesh avatar with skeleton and decoded SL mesh.
    */
-  private createMeshAvatar(data: AvatarData): THREE.Group {
+  private async createMeshAvatar(data: AvatarData): Promise<THREE.Group> {
     const group = new THREE.Group();
     group.name = data.name;
 
@@ -65,7 +65,7 @@ export class AvatarRenderer {
 
       // Decode mesh data
       if (data.meshData) {
-        const geometry = this.meshDecoder.decode(data.meshData);
+        const geometry = await this.meshDecoder.decode(data.meshData);
 
         // Create skeleton helper for debugging (commented out for production)
         // const helper = new THREE.SkeletonHelper(skeleton.bones[0]);

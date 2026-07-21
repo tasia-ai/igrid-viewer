@@ -122,7 +122,7 @@ export class ObjectRenderer {
     }
 
     try {
-      const geometry = this.meshDecoder.decode(meshData);
+      const geometry = await this.meshDecoder.decode(meshData);
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
       return geometry;
