@@ -1,0 +1,6 @@
+@I_Grid.Server_HostAddress = http://localhost:5139
+
+GET {{I_Grid.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

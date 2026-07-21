@@ -1,0 +1,47 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+publish/
+*.user
+*.suo
+*.userosscache
+*.sln.docstats
+
+# NuGet
+*.nupkg
+.nuget/
+packages/
+**/packages.lock.json
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node / npm
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets
+*.env
+appsettings.Production.json
+
+# Logs
+logs/
+*.log
