@@ -334,6 +334,7 @@ chatForm.addEventListener('submit', async (e) => {
 });
 
 function addChatMessage(from: string, message: string): void {
+  if (!message || !message.trim()) return;
   const line = document.createElement('div');
   line.className = 'chat-line';
   line.innerHTML = `<span class="chat-name">${escapeHtml(from)}:</span> ${escapeHtml(message)}`;
