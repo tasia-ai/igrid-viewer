@@ -36,7 +36,7 @@ public class ViewerHub : Hub
         var client = session.Client;
 
         // Track which mesh IDs have already been sent to this client
-        var sentMeshes = new HashSet<string>();
+        var sentMeshes = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>();
 
         // Object updates
         client.Objects.ObjectUpdate += async (_, e) =>
@@ -92,9 +92,7 @@ public class ViewerHub : Hub
                     var meshId = prim.Sculpt.SculptTexture;
                     var meshKey = meshId.ToString();
 
-                    if (!sentMeshes.Contains(meshKey))
-                    {
-                        sentMeshes.Add(meshKey);
+                    if (sentMeshes.TryAdd(meshKey, true))
                         try
                         {
                             var meshData = await RequestMeshAsync(client, meshId);
@@ -109,7 +107,6 @@ public class ViewerHub : Hub
                             }
                         }
                         catch (Exception ex) { Console.WriteLine($"[ViewerHub] Mesh error: {ex.Message}"); }
-                    }
                 }
             }
             catch (Exception ex) { Console.WriteLine($"[ViewerHub] ObjectUpdate error: {ex.Message}"); }
