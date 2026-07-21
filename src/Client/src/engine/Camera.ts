@@ -113,9 +113,11 @@ export class CameraController {
 
     // WASD keys — skip when typing in input fields
     window.addEventListener('keydown', (e) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      this.keys.add(e.code);
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+      if (e.code.startsWith('Key') || e.code === 'Space' || e.code === 'ControlLeft' || e.code === 'ControlRight') {
+        this.keys.add(e.code);
+      }
     });
 
     window.addEventListener('keyup', (e) => {
