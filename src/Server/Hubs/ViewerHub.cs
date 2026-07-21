@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Security.Claims;
 using System.Reflection;
@@ -14,6 +15,7 @@ public class ViewerHub : Hub
 {
     private readonly GridConnectionService _grid;
     private static readonly HttpClient _httpClient = new();
+    private static readonly ConcurrentDictionary<UUID, byte[]> _meshCache = new();
 
     public ViewerHub(GridConnectionService grid) { _grid = grid; }
 
@@ -32,6 +34,9 @@ public class ViewerHub : Hub
 
         var caller = Clients.Caller;
         var client = session.Client;
+
+        // Track which mesh IDs have already been sent to this client
+        var sentMeshes = new HashSet<string>();
 
         // Object updates
         client.Objects.ObjectUpdate += async (_, e) =>
@@ -81,27 +86,36 @@ public class ViewerHub : Hub
                     PathRevolutions = prim.PrimData.PathRevolutions,
                 });
 
-                // Fetch mesh for mesh prims
+                // Fetch mesh ONLY if not already sent to this client
                 if (prim.Type == PrimType.Mesh && prim.Sculpt?.SculptTexture != UUID.Zero)
                 {
-                    try
+                    var meshId = prim.Sculpt.SculptTexture;
+                    var meshKey = meshId.ToString();
+
+                    if (!sentMeshes.Contains(meshKey))
                     {
-                        var meshData = await RequestMeshAsync(client, prim.Sculpt.SculptTexture);
-                        if (meshData != null && meshData.Length > 0)
+                        sentMeshes.Add(meshKey);
+                        try
                         {
-                            await caller.SendAsync("MeshData", new
+                            var meshData = await RequestMeshAsync(client, meshId);
+                            if (meshData != null && meshData.Length > 0)
                             {
-                                Id = prim.ID.ToString(),
-                                Data = Convert.ToBase64String(meshData)
-                            });
+                                await caller.SendAsync("MeshData", new
+                                {
+                                    Id = prim.ID.ToString(),
+                                    Data = Convert.ToBase64String(meshData)
+                                });
+                                Console.WriteLine($"[ViewerHub] Sent mesh {meshKey}: {meshData.Length} bytes");
+                            }
                         }
+                        catch (Exception ex) { Console.WriteLine($"[ViewerHub] Mesh error: {ex.Message}"); }
                     }
-                    catch (Exception ex) { Console.WriteLine($"[ViewerHub] Mesh fetch error: {ex.Message}"); }
                 }
             }
             catch (Exception ex) { Console.WriteLine($"[ViewerHub] ObjectUpdate error: {ex.Message}"); }
         };
 
+        // Avatar updates
         client.Objects.AvatarUpdate += async (_, e) =>
         {
             if (e.Avatar == null) return;
@@ -118,18 +132,21 @@ public class ViewerHub : Hub
             catch { }
         };
 
+        // Terrain
         client.Terrain.LandPatchReceived += async (_, e) =>
         {
             try { await caller.SendAsync("TerrainPatch", new { X = e.X, Y = e.Y, PatchSize = e.PatchSize, Heights = e.HeightMap }); }
             catch { }
         };
 
+        // Chat
         client.Self.ChatFromSimulator += async (_, e) =>
         {
             try { await caller.SendAsync("ChatMessage", new { From = e.FromName ?? "Unknown", Message = e.Message, Type = (int)e.Type }); }
             catch { }
         };
 
+        // IM
         client.Self.IM += async (_, e) =>
         {
             try
@@ -143,6 +160,7 @@ public class ViewerHub : Hub
             catch { }
         };
 
+        // Friends
         client.Friends.FriendOnline += async (_, e) =>
         {
             try { await caller.SendAsync("FriendUpdate", new { Id = e.Friend.UUID.ToString(), Name = e.Friend.Name ?? "Unknown", Online = true }); }
@@ -154,7 +172,7 @@ public class ViewerHub : Hub
             catch { }
         };
 
-        // Send connected
+        // Connected
         var regionName = client.Network.CurrentSim?.Name ?? "Unknown Region";
         var regionHandle = client.Network.CurrentSim?.Handle ?? 0;
         var regionX = (int)((regionHandle >> 32) & 0xFFFFFFFF);
@@ -169,7 +187,7 @@ public class ViewerHub : Hub
             Position = new { X = client.Self.SimPosition.X, Y = client.Self.SimPosition.Y, Z = client.Self.SimPosition.Z }
         });
 
-        // Send friends
+        // Friends list
         try
         {
             var friendListField = client.Friends.GetType().GetField("FriendList", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -194,15 +212,18 @@ public class ViewerHub : Hub
         Console.WriteLine($"[ViewerHub] Connected as {client.Self.Name} in {regionName}");
     }
 
-    /// <summary>
-    /// Fetch mesh via GetMesh HTTP capability (like Firestorm does).
-    /// Falls back to RequestMesh (UDP) if cap not available.
-    /// </summary>
     private async Task<byte[]?> RequestMeshAsync(GridClient client, UUID meshId)
     {
+        // Check global cache first
+        if (_meshCache.TryGetValue(meshId, out var cached))
+        {
+            Console.WriteLine($"[ViewerHub] Mesh cache hit: {meshId}");
+            return cached;
+        }
+
         try
         {
-            // Try HTTP capability first (like Firestorm's GetMesh cap)
+            // Try HTTP capability first (like Firestorm)
             var sim = client.Network.CurrentSim;
             if (sim?.Caps != null)
             {
@@ -210,20 +231,20 @@ public class ViewerHub : Hub
                 if (meshCapUri != null)
                 {
                     var url = $"{meshCapUri}?mesh_id={meshId}";
-                    Console.WriteLine($"[ViewerHub] Fetching mesh via GetMesh cap: {url}");
-                    var response = await _httpClient.GetAsync(url);
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    var response = await _httpClient.GetAsync(url, cts.Token);
                     if (response.IsSuccessStatusCode)
                     {
-                        var data = await response.Content.ReadAsByteArrayAsync();
-                        Console.WriteLine($"[ViewerHub] Mesh fetched via cap: {data.Length} bytes");
+                        var data = await response.Content.ReadAsByteArrayAsync(cts.Token);
+                        _meshCache[meshId] = data;
+                        Console.WriteLine($"[ViewerHub] Mesh via cap: {data.Length} bytes");
                         return data;
                     }
-                    Console.WriteLine($"[ViewerHub] GetMesh cap returned {(int)response.StatusCode}");
+                    Console.WriteLine($"[ViewerHub] GetMesh cap: {(int)response.StatusCode}");
                 }
             }
 
-            // Fallback: RequestMesh (UDP) with timeout
-            Console.WriteLine($"[ViewerHub] Falling back to RequestMesh for {meshId}");
+            // Fallback: RequestMesh (UDP)
             var tcs = new TaskCompletionSource<byte[]?>();
             client.Assets.RequestMesh(meshId, (bool success, AssetMesh assetMesh) =>
             {
@@ -231,7 +252,6 @@ public class ViewerHub : Hub
                     tcs.TrySetResult(assetMesh.AssetData);
                 else
                 {
-                    // Final fallback: RequestAsset
                     client.Assets.RequestAsset(meshId, AssetType.Mesh, false,
                         (AssetDownload transfer, Asset asset) =>
                         {
@@ -240,13 +260,16 @@ public class ViewerHub : Hub
                 }
             });
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            cts.Token.Register(() => tcs.TrySetResult(null));
-            return await tcs.Task;
+            using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            cts2.Token.Register(() => tcs.TrySetResult(null));
+            var result = await tcs.Task;
+            if (result != null && result.Length > 0)
+                _meshCache[meshId] = result;
+            return result;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ViewerHub] RequestMeshAsync error: {ex.Message}");
+            Console.WriteLine($"[ViewerHub] RequestMesh error: {ex.Message}");
             return null;
         }
     }
