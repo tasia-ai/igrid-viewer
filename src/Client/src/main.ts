@@ -243,7 +243,7 @@ teleportForm.addEventListener('submit', async (e) => {
   } catch { addChatMessage('System', 'Teleport failed'); }
 });
 
-// === FRIENDS & IM ===
+// === FRIENDS & IM (multi-conversation) ===
 const friendsHeader = document.getElementById('friends-header')!;
 const friendsList = document.getElementById('friends-list')!;
 const onlineCount = document.getElementById('online-count')!;
@@ -254,10 +254,11 @@ const imInput = document.getElementById('im-input') as HTMLInputElement;
 const imSend = document.getElementById('im-send') as HTMLButtonElement;
 
 interface Friend { id: string; name: string; online: boolean; }
+interface IMConvo { friendId: string; friendName: string; messages: { from: string; text: string; time: Date }[]; unread: number; }
+
 const friends = new Map<string, Friend>();
-let imTarget: Friend | null = null;
-const imHistories = new Map<string, { from: string; message: string; time: Date }[]>();
-let imOpen = false;
+const convos = new Map<string, IMConvo>();
+let activeConvoId: string | null = null;
 
 friendsHeader.addEventListener('click', (e) => { e.stopPropagation(); friendsList.style.display = friendsList.style.display === 'none' ? 'block' : 'none'; });
 
@@ -266,58 +267,74 @@ function renderFriends() {
   let online = 0;
   for (const f of friends.values()) {
     if (f.online) online++;
+    const conv = convos.get(f.id);
+    const unread = conv?.unread ?? 0;
     const div = document.createElement('div');
-    const unread = imHistories.get(f.id)?.filter(m => m.from !== 'You').length ?? 0;
     div.className = `friend-item ${f.online ? 'friend-online' : 'friend-offline'}`;
-    div.innerHTML = `${f.online ? '● ' : '○ '}${esc(f.name)}${unread > 0 ? ` <span style="color:#ef5350;font-weight:bold">(${unread})</span>` : ''}`;
-    div.addEventListener('click', (e) => { e.stopPropagation(); openIM(f); });
+    div.innerHTML = `${f.online ? '● ' : '○ '}${esc(f.name)}${unread > 0 ? `<span style="color:#ef5350;font-weight:bold;margin-left:4px">${unread}</span>` : ''}`;
+    div.addEventListener('click', (e) => { e.stopPropagation(); switchIM(f.id, f.name); });
     friendsList.appendChild(div);
   }
   onlineCount.textContent = String(online);
 }
 
-function openIM(friend: Friend) {
-  imTarget = friend; imOpen = true;
-  imTitle.textContent = friend.name;
+function switchIM(friendId: string, friendName: string) {
+  activeConvoId = friendId;
+  if (!convos.has(friendId)) convos.set(friendId, { friendId, friendName, messages: [], unread: 0 });
+  const conv = convos.get(friendId)!;
+  conv.unread = 0;
+  imTitle.textContent = friendName;
+  imWindow.style.display = 'block';
+  friendsList.style.display = 'none';
   imMessages.innerHTML = '';
-  for (const msg of (imHistories.get(friend.id) || [])) {
+  for (const msg of conv.messages) {
+    const time = msg.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const color = msg.from === 'You' ? '#6ab0ff' : '#8f8';
     const line = document.createElement('div');
-    line.innerHTML = `<b style="color:${msg.from === 'You' ? '#6ab0ff' : '#8f8'}">${esc(msg.from)}:</b> ${esc(msg.message)}`;
+    line.innerHTML = `<span style="color:#666;font-size:9px">${time}</span> <b style="color:${color}">${esc(msg.from)}:</b> <span style="color:#ddd">${esc(msg.text)}</span>`;
     imMessages.appendChild(line);
   }
   imMessages.scrollTop = imMessages.scrollHeight;
-  imWindow.style.display = 'block';
-  friendsList.style.display = 'none';
   imInput.focus();
+  renderFriends();
 }
 
 imSend.addEventListener('click', async () => {
   const msg = imInput.value.trim();
-  if (!msg || !imTarget || !gridClient) return;
-  await gridClient.sendIM(imTarget.id, msg);
-  if (!imHistories.has(imTarget.id)) imHistories.set(imTarget.id, []);
-  imHistories.get(imTarget.id)!.push({ from: 'You', message: msg, time: new Date() });
-  const line = document.createElement('div');
-  line.innerHTML = `<b style="color:#6ab0ff">You:</b> ${esc(msg)}`;
-  imMessages.appendChild(line);
-  imMessages.scrollTop = imMessages.scrollHeight;
-  imInput.value = '';
+  if (!msg || !activeConvoId || !gridClient) return;
+  const conv = convos.get(activeConvoId);
+  if (!conv) return;
+  try {
+    await gridClient.sendIM(activeConvoId, msg);
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    conv.messages.push({ from: 'You', text: msg, time: new Date() });
+    const line = document.createElement('div');
+    line.innerHTML = `<span style="color:#666;font-size:9px">${time}</span> <b style="color:#6ab0ff">You:</b> <span style="color:#ddd">${esc(msg)}</span>`;
+    imMessages.appendChild(line);
+    imMessages.scrollTop = imMessages.scrollHeight;
+    imInput.value = '';
+  } catch (err) { console.error('IM error:', err); }
 });
 
 imInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); imSend.click(); } });
-
-document.getElementById('im-header')!.addEventListener('click', () => { imWindow.style.display = 'none'; imOpen = false; imTarget = null; });
+document.getElementById('im-header')!.addEventListener('click', () => { imWindow.style.display = 'none'; activeConvoId = null; });
 
 function addIMMessage(from: string, message: string, fromId?: string) {
-  const histId = fromId || from;
-  if (!imHistories.has(histId)) imHistories.set(histId, []);
-  imHistories.get(histId)!.push({ from, message, time: new Date() });
-  if (imTarget && imOpen && (fromId === imTarget.id || from === imTarget?.name)) {
+  const senderId = fromId || from;
+  if (!convos.has(senderId)) {
+    convos.set(senderId, { friendId: senderId, friendName: from, messages: [], unread: 0 });
+    if (!friends.has(senderId)) friends.set(senderId, { id: senderId, name: from, online: true });
+  }
+  const conv = convos.get(senderId)!;
+  conv.messages.push({ from, text: message, time: new Date() });
+  if (activeConvoId === senderId) {
+    conv.unread = 0;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const line = document.createElement('div');
-    line.innerHTML = `<b style="color:#8f8">${esc(from)}:</b> ${esc(message)}`;
+    line.innerHTML = `<span style="color:#666;font-size:9px">${time}</span> <b style="color:#8f8">${esc(from)}:</b> <span style="color:#ddd">${esc(message)}</span>`;
     imMessages.appendChild(line);
     imMessages.scrollTop = imMessages.scrollHeight;
-  }
+  } else { conv.unread++; }
   addChatMessage(`[IM] ${from}`, message);
   renderFriends();
 }
