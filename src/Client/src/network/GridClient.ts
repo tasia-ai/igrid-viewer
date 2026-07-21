@@ -5,6 +5,7 @@ import { CameraController } from '../engine/Camera';
 import { TerrainRenderer } from '../engine/TerrainRenderer';
 import { ObjectRenderer } from '../engine/ObjectRenderer';
 import { AvatarRenderer } from '../engine/AvatarRenderer';
+import { PBRMaterialLoader } from '../engine/PBRMaterialLoader';
 
 /**
  * Bridges the browser to the ViewerHub via SignalR.
@@ -16,6 +17,7 @@ export class GridClient {
   private objects: ObjectRenderer;
   private avatars: AvatarRenderer;
   private camera: CameraController;
+  public materialLoader: PBRMaterialLoader;
   private _connected = false;
 
   public get connected(): boolean {
@@ -25,11 +27,13 @@ export class GridClient {
   constructor(
     private sceneManager: SceneManager,
     private authToken: string,
+    private baseUrl: string,
     private onChatMessage?: (from: string, message: string) => void,
     private onPositionUpdate?: (x: number, y: number, z: number) => void
   ) {
+    this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
     this.terrain = new TerrainRenderer(sceneManager.scene);
-    this.objects = new ObjectRenderer(sceneManager.scene);
+    this.objects = new ObjectRenderer(sceneManager.scene, this.materialLoader);
     this.avatars = new AvatarRenderer(sceneManager.scene);
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
 
@@ -60,6 +64,7 @@ export class GridClient {
         rotation: data.rotation,
         scale: data.scale,
         pcode: data.pCode,
+        textureId: data.textureId,
       });
     });
 
@@ -134,6 +139,7 @@ export class GridClient {
    * Disconnect from the server.
    */
   async stop(): Promise<void> {
+    this.materialLoader.dispose();
     await this.connection.stop();
     this._connected = false;
   }

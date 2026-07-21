@@ -42,6 +42,15 @@ public class ViewerHub : Hub
         {
             var prim = e.Prim;
             var primData = prim.PrimData;
+
+            // Extract texture UUID from texture entry
+            string? textureId = null;
+            if (prim.Textures?.DefaultTexture?.TextureID != null &&
+                prim.Textures.DefaultTexture.TextureID != UUID.Zero)
+            {
+                textureId = prim.Textures.DefaultTexture.TextureID.ToString();
+            }
+
             await Clients.Caller.SendAsync("ObjectUpdate", new
             {
                 Id = prim.ID.ToString(),
@@ -50,7 +59,7 @@ public class ViewerHub : Hub
                 Rotation = new { X = prim.Rotation.X, Y = prim.Rotation.Y, Z = prim.Rotation.Z, W = prim.Rotation.W },
                 Scale = new { X = prim.Scale.X, Y = prim.Scale.Y, Z = prim.Scale.Z },
                 PCode = (int)primData.ProfileCurve,
-                TextureEntry = prim.Textures?.GetBytes()
+                TextureId = textureId
             });
         };
 

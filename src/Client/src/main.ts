@@ -102,10 +102,14 @@ connectBtn.addEventListener('click', async () => {
   // Initialize 3D scene
   sceneManager = new SceneManager(viewport);
 
+  // Pass base URL for texture proxy
+  const baseUrl = window.location.origin;
+
   // Add chat callback
   gridClient = new GridClient(
     sceneManager,
     authToken,
+    baseUrl,
     (from, message) => addChatMessage(from, message),
     (x, y, z) => {
       positionInfo.textContent = `${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`;
@@ -178,7 +182,7 @@ function escapeHtml(str: string): string {
   return div.innerHTML;
 }
 
-// --- Minimap (placeholder — renders on canvas) ---
+// --- Minimap (placeholder until real map tiles are loaded) ---
 function drawMinimap(): void {
   const ctx = minimapCanvas.getContext('2d');
   if (!ctx) return;
