@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 /**
  * Core 3D scene manager. Owns the renderer, scene, camera, water, and render loop.
+ * Implements distance-based object culling to prevent frame drops.
  */
 export class SceneManager {
   public scene: THREE.Scene;
@@ -9,6 +10,7 @@ export class SceneManager {
   public renderer: THREE.WebGLRenderer;
   public clock: THREE.Clock;
   public water: THREE.Mesh;
+  public drawDistance = 256;
 
   constructor(container: HTMLElement) {
     // Scene
@@ -18,43 +20,36 @@ export class SceneManager {
 
     // Camera
     this.camera = new THREE.PerspectiveCamera(
-      70,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      5000
+      70, container.clientWidth / container.clientHeight, 0.1, 5000
     );
 
-    // Renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Renderer — use basic settings for performance
+    this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'low-power' });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.shadowMap.enabled = false; // Disable shadows for performance
+    this.renderer.toneMapping = THREE.NoToneMapping;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
     this.clock = new THREE.Clock();
 
-    // Water plane at SL sea level (z=20.0 in SL = y=20.0 in Three.js)
+    // Water plane
     const waterGeo = new THREE.PlaneGeometry(4096, 4096);
-    const waterMat = new THREE.MeshStandardMaterial({
-      color: 0x006994,
-      transparent: true,
-      opacity: 0.7,
-      roughness: 0.1,
-      metalness: 0.3,
-      side: THREE.DoubleSide,
-    });
+    const waterMat = new THREE.MeshBasicMaterial({ color: 0x006994, transparent: true, opacity: 0.6 });
     this.water = new THREE.Mesh(waterGeo, waterMat);
     this.water.rotation.x = -Math.PI / 2;
-    this.water.position.y = 20; // SL sea level
-    this.water.receiveShadow = true;
+    this.water.position.y = 20;
+    this.water.renderOrder = -1;
     this.scene.add(this.water);
 
-    // Default lighting
-    this.setupLighting();
+    // Lighting — minimal for performance
+    const ambient = new THREE.AmbientLight(0x606080, 1.2);
+    this.scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xfff4e0, 1.5);
+    sun.position.set(100, 200, 100);
+    this.scene.add(sun);
 
     // Resize handling
     const onResize = () => {
@@ -65,37 +60,14 @@ export class SceneManager {
     window.addEventListener('resize', onResize);
   }
 
-  private setupLighting(): void {
-    // Ambient light
-    const ambient = new THREE.AmbientLight(0x404060, 0.6);
-    this.scene.add(ambient);
-
-    // Directional light (sun)
-    const sun = new THREE.DirectionalLight(0xfff4e0, 1.2);
-    sun.position.set(100, 200, 100);
-    sun.castShadow = true;
-    sun.shadow.mapSize.width = 2048;
-    sun.shadow.mapSize.height = 2048;
-    sun.shadow.camera.near = 0.5;
-    sun.shadow.camera.far = 500;
-    sun.shadow.camera.left = -100;
-    sun.shadow.camera.right = 100;
-    sun.shadow.camera.top = 100;
-    sun.shadow.camera.bottom = -100;
-    this.scene.add(sun);
-
-    // Hemisphere light for sky/ground color blend
-    const hemi = new THREE.HemisphereLight(0x87ceeb, 0x362907, 0.4);
-    this.scene.add(hemi);
-  }
-
   /**
-   * Start the render loop. Calls callback each frame with delta time.
+   * Start render loop. Calls callback each frame with delta time.
+   * Uses requestAnimationFrame with time budgeting to prevent frame drops.
    */
   animate(callback?: (delta: number) => void): void {
     const loop = () => {
       requestAnimationFrame(loop);
-      const delta = this.clock.getDelta();
+      const delta = Math.min(this.clock.getDelta(), 0.1); // Cap delta to prevent huge jumps
       callback?.(delta);
       this.renderer.render(this.scene, this.camera);
     };

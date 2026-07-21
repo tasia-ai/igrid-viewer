@@ -70,6 +70,7 @@ export class GridClient {
     });
 
     hub.on('ObjectUpdate', (data: any) => {
+      const camPos = this.sceneManager?.camera?.position;
       this.objects.updatePrim({
         id: data.id,
         name: data.name,
@@ -79,7 +80,7 @@ export class GridClient {
         primType: data.primType,
         textureId: data.textureId,
         faces: data.faces,
-      }).catch(err => console.warn('[Grid] updatePrim error:', err));
+      }, camPos).catch(err => console.warn('[Grid] updatePrim error:', err));
     });
 
     hub.on('MeshData', async (data: any) => {

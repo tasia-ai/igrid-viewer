@@ -42,11 +42,26 @@ export class ObjectRenderer {
   }
 
   /**
-   * Update prim — FAST PATH: create geometry immediately with default material,
-   * load texture in background (non-blocking).
+   * Update prim — FAST PATH: create geometry IMMEDIATELY with default material,
+   * load texture in BACKGROUND (non-blocking).
+   * Skip objects too far from camera.
    */
-  async updatePrim(prim: PrimData): Promise<void> {
+  async updatePrim(prim: PrimData, cameraPos?: THREE.Vector3): Promise<void> {
     const existing = this.objects.get(prim.id);
+
+    // Distance culling — skip objects far from camera
+    if (cameraPos) {
+      const dx = prim.position.x - cameraPos.x;
+      const dz = prim.position.y - cameraPos.z;
+      const distSq = dx * dx + dz * dz;
+      if (distSq > 256 * 256) {
+        // Too far — hide if exists, don't create
+        if (existing) { existing.visible = false; }
+        return;
+      } else if (existing) {
+        existing.visible = true;
+      }
+    }
 
     // If already exists, just update position/rotation/scale (instant)
     if (existing) {
