@@ -143,6 +143,34 @@ public class ViewerHub : Hub
             catch { }
         };
 
+        // Parcel info updates
+        client.Parcels.ParcelProperties += async (_, e) =>
+        {
+            try
+            {
+                var parcel = client.Parcels.CurrentParcel;
+                if (parcel != null)
+                {
+                    await caller.SendAsync("ParcelInfo", new
+                    {
+                        Name = parcel.Name ?? "Unnamed",
+                        Owner = parcel.OwnerID.ToString(),
+                        Area = parcel.Area,
+                        Auction = parcel.AuctionID,
+                        SalePrice = parcel.SalePrice,
+                    });
+                }
+            }
+            catch { }
+        };
+
+        // Balance updates
+        client.Self.MoneyBalance += async (_, e) =>
+        {
+            try { await caller.SendAsync("BalanceUpdate", new { Balance = e.Balance }); }
+            catch { }
+        };
+
         // IM
         client.Self.IM += async (_, e) =>
         {

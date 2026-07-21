@@ -2,7 +2,7 @@ import { SceneManager } from './engine/SceneManager';
 import { GridClient } from './network/GridClient';
 import { MinimapRenderer } from './engine/MinimapRenderer';
 
-// DOM elements
+// === DOM ===
 const viewport = document.getElementById('viewport')!;
 const loginPanel = document.getElementById('login-panel')!;
 const loginForm = document.getElementById('login-form') as HTMLFormElement;
@@ -17,328 +17,226 @@ const connectBtn = document.getElementById('connect-btn') as HTMLButtonElement;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
 const switchAvatarBtn = document.getElementById('switch-avatar-btn') as HTMLButtonElement;
 const topBar = document.getElementById('top-bar')!;
-const regionInfo = document.getElementById('region-info')!;
+const regionName = document.getElementById('region-name')!;
+const parcelName = document.getElementById('parcel-name')!;
+const currencyDisplay = document.getElementById('currency-display')!;
 const positionDisplay = document.getElementById('position-display')!;
-const bottomBar = document.getElementById('bottom-bar')!;
+const cameraPanel = document.getElementById('camera-panel')!;
+const chatWindow = document.getElementById('chat-window')!;
 const chatMessages = document.getElementById('chat-messages')!;
-const chatForm = document.getElementById('chat-form') as HTMLFormElement;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
+const chatSend = document.getElementById('chat-send') as HTMLButtonElement;
 const minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
+const teleportBar = document.getElementById('teleport-bar')!;
 const teleportForm = document.getElementById('teleport-form') as HTMLFormElement;
 const teleportInput = document.getElementById('teleport-input') as HTMLInputElement;
+const zoomSlider = document.getElementById('zoom-slider') as HTMLInputElement;
 
-// State
-let authToken: string = '';
+// === STATE ===
+let authToken = '';
 let gridClient: GridClient | null = null;
 let sceneManager: SceneManager | null = null;
 let minimap: MinimapRenderer | null = null;
 let selectedAvatarId: number | null = null;
 let isRegisterMode = false;
 
-// --- Auth mode toggle ---
+// === AUTH ===
 toggleAuth.addEventListener('click', (e) => {
   e.preventDefault();
   isRegisterMode = !isRegisterMode;
   loginError.style.display = 'none';
-  if (isRegisterMode) {
-    authBtn.textContent = 'Register';
-    confirmPasswordInput.style.display = 'block';
-    confirmPasswordInput.required = true;
-    betaKeyInput.style.display = 'block';
-    betaKeyInput.required = true;
-    toggleAuth.textContent = 'Already have an account? Login';
-  } else {
-    authBtn.textContent = 'Login';
-    confirmPasswordInput.style.display = 'none';
-    confirmPasswordInput.required = false;
-    betaKeyInput.style.display = 'none';
-    betaKeyInput.required = false;
-    toggleAuth.textContent = "Don't have an account? Register";
-  }
+  authBtn.textContent = isRegisterMode ? 'Register' : 'Login';
+  confirmPasswordInput.style.display = isRegisterMode ? 'block' : 'none';
+  confirmPasswordInput.required = isRegisterMode;
+  betaKeyInput.style.display = isRegisterMode ? 'block' : 'none';
+  betaKeyInput.required = isRegisterMode;
+  toggleAuth.textContent = isRegisterMode ? 'Already have an account? Login' : "Don't have an account? Register";
 });
 
-// --- Login / Register ---
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   loginError.style.display = 'none';
-
   const username = (document.getElementById('username') as HTMLInputElement).value;
   const password = (document.getElementById('password') as HTMLInputElement).value;
 
   if (isRegisterMode) {
-    if (betaKeyInput.value.trim() !== 'tasia') {
-      loginError.textContent = 'Invalid beta key';
-      loginError.style.display = 'block';
-      return;
-    }
-    const confirm = confirmPasswordInput.value;
-    if (password !== confirm) {
-      loginError.textContent = 'Passwords do not match';
-      loginError.style.display = 'block';
-      return;
-    }
-    if (password.length < 4) {
-      loginError.textContent = 'Password must be at least 4 characters';
-      loginError.style.display = 'block';
-      return;
-    }
+    if (betaKeyInput.value.trim() !== 'tasia') { showError('Invalid beta key'); return; }
+    if (password !== confirmPasswordInput.value) { showError('Passwords do not match'); return; }
+    if (password.length < 4) { showError('Password must be at least 4 characters'); return; }
   }
 
-  const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
-
   try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      loginError.textContent = err.error || (isRegisterMode ? 'Registration failed' : 'Login failed');
-      loginError.style.display = 'block';
-      return;
-    }
-
+    const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+    const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+    if (!res.ok) { showError((await res.json()).error || 'Failed'); return; }
     const data = await res.json();
-
     if (isRegisterMode) {
-      const loginRes = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-      if (!loginRes.ok) {
-        loginError.textContent = 'Account created! Now login.';
-        isRegisterMode = false;
-        authBtn.textContent = 'Login';
-        confirmPasswordInput.style.display = 'none';
-        betaKeyInput.style.display = 'none';
-        toggleAuth.textContent = "Don't have an account? Register";
-        return;
-      }
-      const loginData = await loginRes.json();
-      authToken = loginData.token;
-    } else {
-      authToken = data.token;
-    }
-
+      const lr = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+      if (!lr.ok) { showError('Account created! Now login.'); isRegisterMode = false; authBtn.textContent = 'Login'; confirmPasswordInput.style.display = 'none'; betaKeyInput.style.display = 'none'; toggleAuth.textContent = "Don't have an account? Register"; return; }
+      authToken = (await lr.json()).token;
+    } else { authToken = data.token; }
     loginPanel.style.display = 'none';
     await loadAvatars();
-  } catch (err) {
-    loginError.textContent = 'Connection error';
-    loginError.style.display = 'block';
-  }
+  } catch { showError('Connection error'); }
 });
 
-// --- Load avatars ---
-async function loadAvatars(): Promise<void> {
+function showError(msg: string) { loginError.textContent = msg; loginError.style.display = 'block'; }
+
+// === AVATARS ===
+async function loadAvatars() {
   avatarPanel.style.display = 'block';
   avatarList.innerHTML = '<li style="color:#888;text-align:center">Loading...</li>';
-
   try {
-    const res = await fetch('/api/avatars', {
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-
-    if (!res.ok) throw new Error('Failed to load avatars');
+    const res = await fetch('/api/avatars', { headers: { Authorization: `Bearer ${authToken}` } });
+    if (!res.ok) throw new Error();
     const avatars = await res.json();
-
-    if (avatars.length === 0) {
-      avatarList.innerHTML = '<li style="color:#888;text-align:center">No avatars. Create one below.</li>';
-      connectBtn.disabled = true;
-      return;
-    }
-
+    if (!avatars.length) { avatarList.innerHTML = '<li style="color:#888;text-align:center">No avatars. Create one below.</li>'; connectBtn.disabled = true; return; }
     avatarList.innerHTML = '';
-    for (const avatar of avatars) {
+    for (const av of avatars) {
       const li = document.createElement('li');
-      li.innerHTML = `
-        <div style="font-weight:600">${avatar.firstName} ${avatar.lastName}</div>
-        <div style="font-size:0.75rem;color:#888">${avatar.homeUri || 'Default location'}</div>
-      `;
-      li.addEventListener('click', () => {
-        avatarList.querySelectorAll('li').forEach((el) => el.classList.remove('selected'));
-        li.classList.add('selected');
-        selectedAvatarId = avatar.id;
-        connectBtn.disabled = false;
-      });
+      li.innerHTML = `<div style="font-weight:600">${av.firstName} ${av.lastName}</div>`;
+      li.addEventListener('click', () => { avatarList.querySelectorAll('li').forEach(el => el.classList.remove('selected')); li.classList.add('selected'); selectedAvatarId = av.id; connectBtn.disabled = false; });
       avatarList.appendChild(li);
     }
-  } catch (err) {
-    avatarList.innerHTML = '<li style="color:#ef5350;text-align:center">Error loading avatars</li>';
-  }
+  } catch { avatarList.innerHTML = '<li style="color:#ef5350;text-align:center">Error loading avatars</li>'; }
 }
 
-// --- Create avatar ---
+// Create avatar
 const createAvatarBtn = document.getElementById('create-avatar-btn') as HTMLButtonElement;
-const avatarFirstName = document.getElementById('avatar-first') as HTMLInputElement;
-const avatarLastName = document.getElementById('avatar-last') as HTMLInputElement;
-const avatarSlPass = document.getElementById('avatar-sl-pass') as HTMLInputElement;
-const avatarCreateError = document.getElementById('avatar-create-error')!;
-
 createAvatarBtn.addEventListener('click', async () => {
-  avatarCreateError.style.display = 'none';
-  const firstName = avatarFirstName.value.trim();
-  const lastName = avatarLastName.value.trim();
-  const slPass = avatarSlPass.value.trim();
-
-  if (!firstName || !lastName) {
-    avatarCreateError.textContent = 'First and last name required';
-    avatarCreateError.style.display = 'block';
-    return;
-  }
-
-  createAvatarBtn.textContent = 'Creating...';
-  createAvatarBtn.disabled = true;
-
+  const errEl = document.getElementById('avatar-create-error')!;
+  errEl.style.display = 'none';
+  const fn = (document.getElementById('avatar-first') as HTMLInputElement).value.trim();
+  const ln = (document.getElementById('avatar-last') as HTMLInputElement).value.trim();
+  const pw = (document.getElementById('avatar-sl-pass') as HTMLInputElement).value.trim();
+  if (!fn || !ln) { errEl.textContent = 'First and last name required'; errEl.style.display = 'block'; return; }
+  createAvatarBtn.textContent = 'Creating...'; createAvatarBtn.disabled = true;
   try {
-    const res = await fetch('/api/avatars', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-      body: JSON.stringify({ firstName, lastName, slPassword: slPass || undefined }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      avatarCreateError.textContent = err.error || 'Failed to create avatar';
-      avatarCreateError.style.display = 'block';
-      return;
-    }
-
-    avatarFirstName.value = '';
-    avatarLastName.value = '';
-    avatarSlPass.value = '';
+    const res = await fetch('/api/avatars', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` }, body: JSON.stringify({ firstName: fn, lastName: ln, slPassword: pw || undefined }) });
+    if (!res.ok) { errEl.textContent = (await res.json()).error || 'Failed'; errEl.style.display = 'block'; return; }
+    (document.getElementById('avatar-first') as HTMLInputElement).value = '';
+    (document.getElementById('avatar-last') as HTMLInputElement).value = '';
+    (document.getElementById('avatar-sl-pass') as HTMLInputElement).value = '';
     await loadAvatars();
-  } catch (err) {
-    avatarCreateError.textContent = 'Connection error';
-    avatarCreateError.style.display = 'block';
-  } finally {
-    createAvatarBtn.textContent = 'Create Avatar';
-    createAvatarBtn.disabled = false;
-  }
+  } catch { errEl.textContent = 'Error'; errEl.style.display = 'block'; }
+  finally { createAvatarBtn.textContent = 'Create Avatar'; createAvatarBtn.disabled = false; }
 });
 
-// --- Switch Avatar ---
-switchAvatarBtn.addEventListener('click', async () => {
-  if (gridClient) { await gridClient.stop(); gridClient = null; }
-  selectedAvatarId = null;
-  hideWorldUI();
-  avatarPanel.style.display = 'block';
-  await loadAvatars();
-  if (sceneManager) { sceneManager.renderer.dispose(); viewport.innerHTML = ''; sceneManager = null; }
-  minimap = null;
+// === D-PAD CAMERA CONTROLS ===
+document.querySelectorAll('.cam-dpad .cam-btn[data-move]').forEach((btn) => {
+  const [dx, dy, dz] = (btn as HTMLElement).dataset.move!.split(',').map(Number);
+  btn.addEventListener('mousedown', () => gridClient?.camera?.startMove(dx, dy, dz));
+  btn.addEventListener('mouseup', () => gridClient?.camera?.stopMove());
+  btn.addEventListener('mouseleave', () => gridClient?.camera?.stopMove());
+  btn.addEventListener('touchstart', (e) => { e.preventDefault(); gridClient?.camera?.startMove(dx, dy, dz); });
+  btn.addEventListener('touchend', () => gridClient?.camera?.stopMove());
 });
 
-// --- Connect to world ---
+document.getElementById('zoom-in')!.addEventListener('click', () => { gridClient?.camera?.setZoom((gridClient?.camera?.getZoom() ?? 30) - 5); zoomSlider.value = String(gridClient?.camera?.getZoom()); });
+document.getElementById('zoom-out')!.addEventListener('click', () => { gridClient?.camera?.setZoom((gridClient?.camera?.getZoom() ?? 30) + 5); zoomSlider.value = String(gridClient?.camera?.getZoom()); });
+document.getElementById('cam-reset')!.addEventListener('click', () => { gridClient?.camera?.resetView(); zoomSlider.value = '30'; });
+document.getElementById('cam-fly')!.addEventListener('click', () => { /* toggle fly mode */ });
+zoomSlider.addEventListener('input', () => { gridClient?.camera?.setZoom(Number(zoomSlider.value)); });
+
+// === SHOW/HIDE WORLD UI ===
+function showWorldUI() {
+  avatarPanel.style.display = 'none';
+  topBar.style.display = 'flex';
+  cameraPanel.style.display = 'flex';
+  chatWindow.style.display = 'flex';
+  teleportBar.style.display = 'block';
+  document.getElementById('right-panel')!.style.display = 'block';
+}
+function hideWorldUI() {
+  [topBar, cameraPanel, chatWindow, teleportBar].forEach(el => el.style.display = 'none');
+  document.getElementById('right-panel')!.style.display = 'none';
+  document.getElementById('im-window')!.style.display = 'none';
+}
+
+// === CONNECT ===
 connectBtn.addEventListener('click', async () => {
   if (!selectedAvatarId) return;
-
   sceneManager = new SceneManager(viewport);
   minimap = new MinimapRenderer(minimapCanvas);
-  const baseUrl = window.location.origin;
-
-  gridClient = new GridClient(
-    sceneManager, authToken, baseUrl,
-    (from, message) => addChatMessage(from, message),
-    (x, y, z) => {
-      positionDisplay.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}`;
-      minimap?.setPlayerPosition(x, y);
-    },
+  gridClient = new GridClient(sceneManager, authToken, window.location.origin,
+    (from, msg) => addChatMessage(from, msg),
+    (x, y, z) => { positionDisplay.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}`; minimap?.setPlayerPosition(x, y); },
     undefined,
     (id, name, online) => { friends.set(id, { id, name, online }); renderFriends(); },
-    (from, message, fromId) => { addIMMessage(from, message, fromId); },
-    (x, y, heights) => { minimap?.updatePatch(x, y, heights); },
-    (regionName, regionX, regionY) => { regionInfo.textContent = `☀ ${regionName} (${regionX}, ${regionY})`; }
+    (from, msg, fid) => { addIMMessage(from, msg, fid); },
+    (x, y, h) => { minimap?.updatePatch(x, y, h); },
+    (rname, rx, ry) => { regionName.textContent = `☀ ${rname}`; parcelName.textContent = `(${rx}, ${ry})`; },
+    (pname, area) => { parcelName.textContent = pname; },
+    (balance) => { currencyDisplay.textContent = `L$${balance.toLocaleString()}`; },
   );
-
   try {
     await gridClient.start();
     await gridClient.connectAvatar(selectedAvatarId);
     showWorldUI();
-    sceneManager.animate((delta) => { gridClient?.camera?.update(delta); });
-  } catch (err) {
-    console.error('Failed to connect:', err);
-  }
+    sceneManager.animate((delta) => gridClient?.camera?.update(delta));
+  } catch (err) { console.error('Connect failed:', err); }
 });
 
-function showWorldUI() {
-  avatarPanel.style.display = 'none';
-  topBar.style.display = 'flex';
-  bottomBar.style.display = 'flex';
-  document.getElementById('right-panel')!.style.display = 'block';
-}
-
-function hideWorldUI() {
-  topBar.style.display = 'none';
-  bottomBar.style.display = 'none';
-  document.getElementById('right-panel')!.style.display = 'none';
-  document.getElementById('im-panel')!.style.display = 'none';
-}
-
-// --- Logout ---
-logoutBtn.addEventListener('click', async () => {
+// === SWITCH / LOGOUT ===
+switchAvatarBtn.addEventListener('click', async () => {
   if (gridClient) { await gridClient.stop(); gridClient = null; }
-  authToken = '';
-  selectedAvatarId = null;
-  hideWorldUI();
-  avatarPanel.style.display = 'none';
-  loginPanel.style.display = 'block';
-  loginForm.reset();
+  selectedAvatarId = null; hideWorldUI(); avatarPanel.style.display = 'block'; await loadAvatars();
   if (sceneManager) { sceneManager.renderer.dispose(); viewport.innerHTML = ''; sceneManager = null; }
   minimap = null;
 });
 
-// --- Chat ---
-chatForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
+logoutBtn.addEventListener('click', async () => {
+  if (gridClient) { await gridClient.stop(); gridClient = null; }
+  authToken = ''; selectedAvatarId = null; hideWorldUI();
+  avatarPanel.style.display = 'none'; loginPanel.style.display = 'block'; loginForm.reset();
+  if (sceneManager) { sceneManager.renderer.dispose(); viewport.innerHTML = ''; sceneManager = null; }
+  minimap = null;
+});
+
+// === CHAT ===
+chatSend.addEventListener('click', sendChat);
+chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
+
+async function sendChat() {
   const msg = chatInput.value.trim();
   if (!msg || !gridClient) return;
   await gridClient.sendChat(msg);
   addChatMessage('You', msg);
   chatInput.value = '';
-});
+}
 
-function addChatMessage(from: string, message: string): void {
-  if (!message || !message.trim()) return;
-  const line = document.createElement('div');
-  line.className = 'chat-line';
-  line.innerHTML = `<span class="chat-name">${escapeHtml(from)}:</span> ${escapeHtml(message)}`;
-  chatMessages.appendChild(line);
+function addChatMessage(from: string, message: string) {
+  if (!message?.trim()) return;
+  const div = document.createElement('div');
+  div.className = 'chat-msg';
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  div.innerHTML = `<span class="chat-time">${time}</span><span class="chat-name">${esc(from)}:</span><div class="chat-text">${esc(message)}</div>`;
+  chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
   while (chatMessages.children.length > 200) chatMessages.removeChild(chatMessages.firstChild!);
 }
 
-// --- Teleport ---
+// === TELEPORT ===
 teleportForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const destination = teleportInput.value.trim();
-  if (!destination || !gridClient) return;
-  const isHypergrid = destination.includes('://') || destination.includes('@');
+  const dest = teleportInput.value.trim();
+  if (!dest || !gridClient) return;
   try {
-    if (isHypergrid) {
-      await gridClient.hypergridTeleport(destination);
-      addChatMessage('System', `Hypergrid teleport to ${destination}...`);
-    } else {
-      await gridClient.teleport(destination);
-      addChatMessage('System', `Teleporting to ${destination}...`);
-    }
+    if (dest.includes('://') || dest.includes('@')) { await gridClient.hypergridTeleport(dest); addChatMessage('System', `Teleporting to ${dest}...`); }
+    else { await gridClient.teleport(dest); addChatMessage('System', `Teleporting to ${dest}...`); }
     teleportInput.value = '';
-  } catch (err) {
-    addChatMessage('System', 'Teleport failed');
-  }
+  } catch { addChatMessage('System', 'Teleport failed'); }
 });
 
-// --- Friends & IM ---
+// === FRIENDS & IM ===
 const friendsHeader = document.getElementById('friends-header')!;
 const friendsList = document.getElementById('friends-list')!;
 const onlineCount = document.getElementById('online-count')!;
-const imPanel = document.getElementById('im-panel')!;
-const imHeader = document.getElementById('im-header')!;
+const imWindow = document.getElementById('im-window')!;
 const imTitle = document.getElementById('im-title')!;
 const imMessages = document.getElementById('im-messages')!;
-const imForm = document.getElementById('im-form') as HTMLFormElement;
 const imInput = document.getElementById('im-input') as HTMLInputElement;
+const imSend = document.getElementById('im-send') as HTMLButtonElement;
 
 interface Friend { id: string; name: string; online: boolean; }
 const friends = new Map<string, Friend>();
@@ -346,72 +244,62 @@ let imTarget: Friend | null = null;
 const imHistories = new Map<string, { from: string; message: string; time: Date }[]>();
 let imOpen = false;
 
-friendsHeader.addEventListener('click', (e) => {
-  e.stopPropagation();
-  friendsList.style.display = friendsList.style.display === 'none' ? 'block' : 'none';
-});
+friendsHeader.addEventListener('click', (e) => { e.stopPropagation(); friendsList.style.display = friendsList.style.display === 'none' ? 'block' : 'none'; });
 
-function renderFriends(): void {
+function renderFriends() {
   friendsList.innerHTML = '';
   let online = 0;
-  for (const friend of friends.values()) {
-    if (friend.online) online++;
+  for (const f of friends.values()) {
+    if (f.online) online++;
     const div = document.createElement('div');
-    const unread = imHistories.get(friend.id)?.filter(m => m.from !== 'You').length ?? 0;
-    div.className = `friend-item ${friend.online ? 'friend-online' : 'friend-offline'}`;
-    div.innerHTML = `${friend.online ? '● ' : '○ '}${escapeHtml(friend.name)}${unread > 0 ? `<span class="friend-unread">${unread}</span>` : ''}`;
-    div.addEventListener('click', (e) => { e.stopPropagation(); openIM(friend); });
+    const unread = imHistories.get(f.id)?.filter(m => m.from !== 'You').length ?? 0;
+    div.className = `friend-item ${f.online ? 'friend-online' : 'friend-offline'}`;
+    div.innerHTML = `${f.online ? '● ' : '○ '}${esc(f.name)}${unread > 0 ? ` <span style="color:#ef5350;font-weight:bold">(${unread})</span>` : ''}`;
+    div.addEventListener('click', (e) => { e.stopPropagation(); openIM(f); });
     friendsList.appendChild(div);
   }
-  onlineCount.textContent = online.toString();
+  onlineCount.textContent = String(online);
 }
 
-function openIM(friend: Friend): void {
-  imTarget = friend;
-  imOpen = true;
+function openIM(friend: Friend) {
+  imTarget = friend; imOpen = true;
   imTitle.textContent = friend.name;
   imMessages.innerHTML = '';
-  const history = imHistories.get(friend.id) || [];
-  for (const msg of history) {
+  for (const msg of (imHistories.get(friend.id) || [])) {
     const line = document.createElement('div');
-    const color = msg.from === 'You' ? '#6ab0ff' : '#8f8';
-    line.innerHTML = `<b style="color:${color}">${escapeHtml(msg.from)}:</b> ${escapeHtml(msg.message)}`;
+    line.innerHTML = `<b style="color:${msg.from === 'You' ? '#6ab0ff' : '#8f8'}">${esc(msg.from)}:</b> ${esc(msg.message)}`;
     imMessages.appendChild(line);
   }
   imMessages.scrollTop = imMessages.scrollHeight;
-  imPanel.style.display = 'block';
+  imWindow.style.display = 'block';
   friendsList.style.display = 'none';
   imInput.focus();
 }
 
-imForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
+imSend.addEventListener('click', async () => {
   const msg = imInput.value.trim();
   if (!msg || !imTarget || !gridClient) return;
-  try {
-    await gridClient.sendIM(imTarget.id, msg);
-    if (!imHistories.has(imTarget.id)) imHistories.set(imTarget.id, []);
-    imHistories.get(imTarget.id)!.push({ from: 'You', message: msg, time: new Date() });
-    const line = document.createElement('div');
-    line.innerHTML = `<b style="color:#6ab0ff">You:</b> ${escapeHtml(msg)}`;
-    imMessages.appendChild(line);
-    imMessages.scrollTop = imMessages.scrollHeight;
-    imInput.value = '';
-  } catch (err) { console.error('IM send error:', err); }
+  await gridClient.sendIM(imTarget.id, msg);
+  if (!imHistories.has(imTarget.id)) imHistories.set(imTarget.id, []);
+  imHistories.get(imTarget.id)!.push({ from: 'You', message: msg, time: new Date() });
+  const line = document.createElement('div');
+  line.innerHTML = `<b style="color:#6ab0ff">You:</b> ${esc(msg)}`;
+  imMessages.appendChild(line);
+  imMessages.scrollTop = imMessages.scrollHeight;
+  imInput.value = '';
 });
 
-imHeader.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (imOpen) { imPanel.style.display = 'none'; imOpen = false; imTarget = null; }
-});
+imInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); imSend.click(); } });
 
-function addIMMessage(from: string, message: string, fromId?: string): void {
+document.getElementById('im-header')!.addEventListener('click', () => { imWindow.style.display = 'none'; imOpen = false; imTarget = null; });
+
+function addIMMessage(from: string, message: string, fromId?: string) {
   const histId = fromId || from;
   if (!imHistories.has(histId)) imHistories.set(histId, []);
   imHistories.get(histId)!.push({ from, message, time: new Date() });
   if (imTarget && imOpen && (fromId === imTarget.id || from === imTarget?.name)) {
     const line = document.createElement('div');
-    line.innerHTML = `<b style="color:#8f8">${escapeHtml(from)}:</b> ${escapeHtml(message)}`;
+    line.innerHTML = `<b style="color:#8f8">${esc(from)}:</b> ${esc(message)}`;
     imMessages.appendChild(line);
     imMessages.scrollTop = imMessages.scrollHeight;
   }
@@ -419,8 +307,4 @@ function addIMMessage(from: string, message: string, fromId?: string): void {
   renderFriends();
 }
 
-function escapeHtml(str: string): string {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+function esc(s: string): string { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }

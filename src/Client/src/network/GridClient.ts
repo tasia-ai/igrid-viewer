@@ -36,6 +36,8 @@ export class GridClient {
     private onIM?: (from: string, message: string, fromId?: string) => void,
     private onTerrainPatch?: (x: number, y: number, heights: Float32Array) => void,
     private onRegionConnected?: (regionName: string, regionX: number, regionY: number) => void,
+    private onParcelInfo?: (name: string, area: number) => void,
+    private onBalanceUpdate?: (balance: number) => void,
   ) {
     this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
     this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
@@ -149,6 +151,14 @@ export class GridClient {
 
     hub.on('InstantMessage', (data: any) => {
       this.onIM?.(data.from, data.message, data.fromId);
+    });
+
+    hub.on('ParcelInfo', (data: any) => {
+      this.onParcelInfo?.(data.name, data.area);
+    });
+
+    hub.on('BalanceUpdate', (data: any) => {
+      this.onBalanceUpdate?.(data.balance);
     });
 
     hub.on('Error', (message: string) => {

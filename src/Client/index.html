@@ -6,206 +6,244 @@
   <title>I-Grid Viewer</title>
   <link rel="stylesheet" href="bootstrap.min.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0a; color: #ccc; }
-    #viewport { width: 100vw; height: 100vh; display: block; position: absolute; top: 0; left: 0; z-index: 0; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { overflow:hidden; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0a0a0a; color:#ccc; }
+    #viewport { width:100vw; height:100vh; display:block; position:absolute; top:0; left:0; z-index:0; }
 
-    /* === LOGIN PANEL === */
-    #login-panel {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(20, 30, 50, 0.95); padding: 2rem; border-radius: 10px;
-      min-width: 320px; border: 1px solid rgba(100, 160, 220, 0.3); z-index: 100;
-      box-shadow: 0 0 40px rgba(0,0,0,0.5);
-    }
-    #login-panel h2 { text-align: center; color: #6ab0ff; margin-bottom: 1.2rem; font-size: 1.6rem; }
-    #login-panel input { margin-bottom: 0.6rem; font-size: 0.9rem; }
-    .login-warning { background: rgba(255,193,7,0.12); border: 1px solid rgba(255,193,7,0.3); border-radius: 5px; padding: 6px 10px; margin-bottom: 1rem; font-size: 0.72rem; color: #ffc107; line-height: 1.3; }
-    .login-toggle { text-align: center; margin-top: 0.8rem; }
-    .login-toggle a { color: #6ab0ff; font-size: 0.8rem; text-decoration: none; }
+    /* === LOGIN === */
+    #login-panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(20,30,50,0.95); padding:2rem; border-radius:10px; min-width:320px; border:1px solid rgba(100,160,220,0.3); z-index:100; box-shadow:0 0 40px rgba(0,0,0,0.5); }
+    #login-panel h2 { text-align:center; color:#6ab0ff; margin-bottom:1.2rem; font-size:1.6rem; }
+    #login-panel input { margin-bottom:0.6rem; font-size:0.9rem; }
+    .login-warning { background:rgba(255,193,7,0.12); border:1px solid rgba(255,193,7,0.3); border-radius:5px; padding:6px 10px; margin-bottom:1rem; font-size:0.72rem; color:#ffc107; }
+    .login-toggle { text-align:center; margin-top:0.8rem; }
+    .login-toggle a { color:#6ab0ff; font-size:0.8rem; text-decoration:none; }
 
     /* === AVATAR PANEL === */
-    #avatar-panel {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(20, 30, 50, 0.95); padding: 1.5rem; border-radius: 10px;
-      min-width: 320px; border: 1px solid rgba(100, 160, 220, 0.3); z-index: 100;
+    #avatar-panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(20,30,50,0.95); padding:1.5rem; border-radius:10px; min-width:320px; border:1px solid rgba(100,160,220,0.3); z-index:100; }
+    #avatar-panel h3 { color:#6ab0ff; margin-bottom:0.8rem; font-size:1.1rem; }
+    #avatar-list { list-style:none; padding:0; max-height:200px; overflow-y:auto; }
+    #avatar-list li { padding:6px 10px; margin-bottom:3px; background:rgba(255,255,255,0.04); border-radius:5px; cursor:pointer; border:1px solid transparent; font-size:0.85rem; }
+    #avatar-list li:hover { background:rgba(100,160,220,0.1); border-color:rgba(100,160,220,0.2); }
+    #avatar-list li.selected { background:rgba(100,160,220,0.2); border-color:#6ab0ff; }
+    .create-av { margin-top:0.8rem; padding-top:0.8rem; border-top:1px solid rgba(255,255,255,0.08); }
+    .create-av input { font-size:0.8rem; margin-bottom:4px; }
+
+    /* === TOP BAR === */
+    #top-bar { position:absolute; top:0; left:0; right:0; height:26px; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:space-between; padding:0 10px; z-index:20; font-size:11px; color:#aaa; pointer-events:none; }
+    #top-bar > * { pointer-events:all; }
+    #location-info { color:#8cb4d8; display:flex; gap:12px; align-items:center; }
+    #parcel-name { color:#aab; }
+    #currency-display { color:#ffcc00; font-weight:600; }
+    #position-display { font-family:monospace; font-size:10px; color:#777; }
+
+    /* === RIGHT PANEL === */
+    #right-panel { position:absolute; top:32px; right:8px; z-index:20; width:180px; }
+    #minimap { width:180px; height:180px; background:rgba(0,0,0,0.7); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); margin-bottom:6px; }
+    #minimap canvas { width:100%; height:100%; }
+    #friends-panel { background:rgba(0,0,0,0.7); border-radius:6px; border:1px solid rgba(255,255,255,0.1); }
+    #friends-header { padding:5px 8px; cursor:pointer; font-size:11px; color:#6ab0ff; display:flex; justify-content:space-between; }
+    #friends-list { max-height:180px; overflow-y:auto; padding:3px 6px; display:none; }
+    .friend-item { padding:2px 6px; font-size:11px; cursor:pointer; border-radius:3px; margin:1px 0; }
+    .friend-online { color:#8f8; }
+    .friend-offline { color:#666; }
+
+    /* === CAMERA CONTROL PANEL (bottom-right) === */
+    #camera-panel {
+      position:absolute; bottom:8px; right:8px; z-index:25;
+      background:rgba(20,30,45,0.9); border-radius:8px; border:1px solid rgba(100,160,220,0.2);
+      padding:8px; display:flex; flex-direction:column; align-items:center; gap:6px;
     }
-    #avatar-panel h3 { color: #6ab0ff; margin-bottom: 0.8rem; font-size: 1.1rem; }
-    #avatar-list { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; }
-    #avatar-list li { padding: 6px 10px; margin-bottom: 3px; background: rgba(255,255,255,0.04); border-radius: 5px; cursor: pointer; border: 1px solid transparent; font-size: 0.85rem; }
-    #avatar-list li:hover { background: rgba(100,160,220,0.1); border-color: rgba(100,160,220,0.2); }
-    #avatar-list li.selected { background: rgba(100,160,220,0.2); border-color: #6ab0ff; }
-    .create-av { margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.08); }
-    .create-av input { font-size: 0.8rem; margin-bottom: 4px; }
-
-    /* === TOP BAR (region info) === */
-    #top-bar {
-      position: absolute; top: 0; left: 0; right: 0; height: 28px;
-      background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: space-between;
-      padding: 0 12px; z-index: 20; font-size: 11px; color: #aaa; pointer-events: none;
+    .cam-row { display:flex; align-items:center; gap:4px; }
+    .cam-btn {
+      width:32px; height:32px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+      border-radius:4px; color:#aab; font-size:14px; cursor:pointer; display:flex;
+      align-items:center; justify-content:center; user-select:none;
     }
-    #top-bar > * { pointer-events: all; }
-    #region-info { color: #8cb4d8; }
-    #position-display { font-family: monospace; font-size: 10px; color: #888; }
+    .cam-btn:hover { background:rgba(100,160,220,0.2); color:#fff; }
+    .cam-btn:active { background:rgba(100,160,220,0.35); }
+    .cam-btn.dpad { width:36px; height:36px; font-size:12px; }
+    .cam-dpad { display:grid; grid-template-columns:36px 36px 36px; grid-template-rows:36px 36px 36px; gap:2px; }
+    .cam-dpad .cam-btn { width:auto; height:auto; }
+    .cam-zoom { display:flex; flex-direction:column; align-items:center; gap:2px; }
+    .cam-zoom .cam-btn { width:28px; height:28px; font-size:10px; }
+    #zoom-slider { writing-mode:bt-lr; -webkit-appearance:slider-vertical; width:20px; height:80px; }
 
-    /* === RIGHT PANEL (minimap + friends) === */
-    #right-panel {
-      position: absolute; top: 36px; right: 8px; z-index: 20; width: 180px;
+    /* === FLOATING CHAT WINDOW === */
+    #chat-window {
+      position:absolute; bottom:8px; left:8px; z-index:25; width:340px;
+      background:rgba(20,25,35,0.92); border-radius:8px; border:1px solid rgba(100,160,220,0.2);
+      display:flex; flex-direction:column; max-height:320px;
     }
-    #minimap {
-      width: 180px; height: 180px; background: rgba(0,0,0,0.7); border-radius: 6px;
-      overflow: hidden; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 6px;
+    #chat-titlebar {
+      padding:5px 8px; font-size:11px; color:#6ab0ff; border-bottom:1px solid rgba(255,255,255,0.08);
+      display:flex; justify-content:space-between; align-items:center; cursor:pointer;
     }
-    #minimap canvas { width: 100%; height: 100%; }
-
-    #friends-panel {
-      background: rgba(0,0,0,0.7); border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);
+    #chat-tabs { display:flex; gap:0; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .chat-tab {
+      padding:4px 10px; font-size:10px; cursor:pointer; background:rgba(255,255,255,0.03);
+      color:#888; border-right:1px solid rgba(255,255,255,0.06);
     }
-    #friends-header { padding: 5px 8px; cursor: pointer; font-size: 11px; color: #6ab0ff; display: flex; justify-content: space-between; align-items: center; }
-    #friends-list { max-height: 180px; overflow-y: auto; padding: 3px 6px; display: none; }
-    .friend-item { padding: 2px 6px; font-size: 11px; cursor: pointer; border-radius: 3px; margin: 1px 0; }
-    .friend-item:hover { background: rgba(100,160,220,0.15); }
-    .friend-online { color: #8f8; }
-    .friend-offline { color: #666; }
-    .friend-unread { color: #ef5350; font-weight: bold; margin-left: 4px; }
+    .chat-tab.active { background:rgba(100,160,220,0.15); color:#6ab0ff; }
+    #chat-messages {
+      flex:1; overflow-y:auto; padding:6px 8px; font-size:11px; line-height:1.4;
+      min-height:100px; max-height:200px;
+    }
+    .chat-msg { margin-bottom:6px; }
+    .chat-msg .chat-name { color:#6ab0ff; font-weight:600; font-size:11px; }
+    .chat-msg .chat-time { color:#666; font-size:9px; float:right; }
+    .chat-msg .chat-text { color:#ddd; font-size:11px; margin-top:1px; }
+    .chat-msg.system .chat-name { color:#888; }
+    .chat-msg.im .chat-name { color:#8f8; }
+    #chat-input-bar {
+      display:flex; gap:3px; padding:5px 6px; border-top:1px solid rgba(255,255,255,0.08);
+    }
+    #chat-input {
+      flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+      color:white; padding:4px 8px; border-radius:3px; font-size:11px;
+    }
+    #chat-input:focus { border-color:#6ab0ff; outline:none; }
+    .chat-send { background:#3a7bd5; border:none; color:white; padding:4px 10px; border-radius:3px; font-size:10px; cursor:pointer; }
 
-    /* === BOTTOM BAR === */
-    #bottom-bar {
-      position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
-      background: rgba(0,0,0,0.75); display: flex; align-items: stretch; height: auto;
+    /* === IM WINDOW (floating) === */
+    #im-window {
+      position:absolute; bottom:340px; left:8px; z-index:26; width:300px;
+      background:rgba(20,25,35,0.95); border-radius:8px; border:1px solid rgba(100,160,220,0.3);
+      display:none;
     }
 
-    /* Chat section (left) */
-    #chat-section { flex: 1; min-width: 0; max-width: 380px; padding: 6px 8px; }
-    #chat-messages { height: 90px; overflow-y: auto; font-size: 11px; line-height: 1.3; margin-bottom: 4px; }
-    .chat-line { margin-bottom: 1px; }
-    .chat-name { color: #6ab0ff; font-weight: 600; }
-    #chat-form { display: flex; gap: 4px; }
-    #chat-input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 4px 8px; border-radius: 3px; font-size: 11px; }
-    #chat-input:focus { border-color: #6ab0ff; outline: none; }
-    .chat-send-btn { background: #3a7bd5; border: none; color: white; padding: 4px 10px; border-radius: 3px; font-size: 11px; cursor: pointer; }
-    .chat-send-btn:hover { background: #4a8be5; }
-
-    /* Controls section (center) */
-    #controls-section { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 12px; gap: 4px; border-left: 1px solid rgba(255,255,255,0.08); border-right: 1px solid rgba(255,255,255,0.08); }
-    #teleport-form { display: flex; gap: 4px; }
-    #teleport-input { width: 160px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 4px 8px; border-radius: 3px; font-size: 11px; }
-    #teleport-input:focus { border-color: #6ab0ff; outline: none; }
-    .tp-btn { background: #3a7bd5; border: none; color: white; padding: 4px 12px; border-radius: 3px; font-size: 11px; cursor: pointer; }
-    .tp-btn:hover { background: #4a8be5; }
-    .move-hint { font-size: 9px; color: #666; }
-
-    /* IM panel */
-    #im-panel {
-      position: absolute; bottom: 100px; right: 8px; width: 280px; z-index: 25;
-      background: rgba(20,30,50,0.95); border-radius: 8px; border: 1px solid rgba(100,160,220,0.3);
-      display: none;
+    /* === TELEPORT BAR === */
+    #teleport-bar {
+      position:absolute; bottom:8px; left:50%; transform:translateX(-50%); z-index:25;
+      display:none;
     }
-    #im-header { padding: 6px 10px; font-size: 11px; color: #6ab0ff; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; }
-    #im-messages { height: 120px; overflow-y: auto; padding: 6px; font-size: 11px; }
-    #im-form { display: flex; gap: 3px; padding: 6px; }
-    #im-input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 3px 6px; border-radius: 3px; font-size: 11px; }
+    #teleport-form { display:flex; gap:4px; }
+    #teleport-input {
+      width:180px; background:rgba(0,0,0,0.7); border:1px solid rgba(255,255,255,0.15);
+      color:white; padding:4px 8px; border-radius:3px; font-size:11px;
+    }
+    .tp-btn { background:#3a7bd5; border:none; color:white; padding:4px 12px; border-radius:3px; font-size:11px; cursor:pointer; }
 
-    /* Buttons */
-    .btn-sm-action { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #ccc; padding: 3px 8px; border-radius: 3px; font-size: 10px; cursor: pointer; }
-    .btn-sm-action:hover { background: rgba(100,160,220,0.2); }
-    .btn-primary-action { background: #3a7bd5; border: none; color: white; }
-    .btn-primary-action:hover { background: #4a8be5; }
-
-    /* Scrollbar styling */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:2px; }
   </style>
 </head>
 <body>
   <div id="viewport"></div>
 
-  <!-- Login -->
+  <!-- LOGIN -->
   <div id="login-panel">
     <h2>✦ I-Grid ✦</h2>
-    <div class="login-warning">
-      ⚠ This account is <b>only for the web viewer</b>. Please do NOT use your grid password!
-    </div>
+    <div class="login-warning">⚠ This account is <b>only for the web viewer</b>. Do NOT use your grid password!</div>
     <form id="login-form">
-      <input id="username" class="form-control" placeholder="Username" required autocomplete="username">
-      <input id="password" type="password" class="form-control" placeholder="Password" required autocomplete="current-password">
+      <input id="username" class="form-control" placeholder="Username" required>
+      <input id="password" type="password" class="form-control" placeholder="Password" required>
       <input id="confirm-password" type="password" class="form-control" placeholder="Confirm password" style="display:none">
       <input id="beta-key" class="form-control" placeholder="Beta key" style="display:none">
       <button type="submit" class="btn btn-primary w-100 mt-2" id="auth-btn">Login</button>
-      <div id="login-error" style="color:#ef5350;font-size:0.8rem;margin-top:0.4rem;display:none"></div>
-      <div class="login-toggle">
-        <a href="#" id="toggle-auth">Don't have an account? Register</a>
-      </div>
+      <div id="login-error" style="color:#ef5350;font-size:0.8rem;margin-top:4px;display:none"></div>
+      <div class="login-toggle"><a href="#" id="toggle-auth">Don't have an account? Register</a></div>
     </form>
   </div>
 
-  <!-- Avatar selection -->
+  <!-- AVATAR SELECT -->
   <div id="avatar-panel" style="display:none">
     <h3>Select Avatar</h3>
     <ul id="avatar-list"></ul>
     <div class="create-av">
-      <div style="font-size:0.75rem;color:#888;margin-bottom:4px">Create new avatar:</div>
       <input id="avatar-first" class="form-control" placeholder="First name">
       <input id="avatar-last" class="form-control" placeholder="Last name">
-      <input id="avatar-sl-pass" type="password" class="form-control" placeholder="SL password (grid)">
+      <input id="avatar-sl-pass" type="password" class="form-control" placeholder="SL password">
       <button id="create-avatar-btn" class="btn btn-sm-action w-100 mt-1">Create Avatar</button>
       <div id="avatar-create-error" style="color:#ef5350;font-size:0.75rem;margin-top:3px;display:none"></div>
     </div>
     <button id="connect-btn" class="btn btn-primary w-100 mt-2" disabled>Enter World</button>
     <div style="display:flex;gap:4px;margin-top:4px">
-      <button id="switch-avatar-btn" class="btn btn-sm-action" style="flex:1">Switch Avatar</button>
+      <button id="switch-avatar-btn" class="btn btn-sm-action" style="flex:1">Switch</button>
       <button id="logout-btn" class="btn btn-sm-action" style="flex:1">Logout</button>
     </div>
   </div>
 
-  <!-- TOP BAR (region info + position) -->
+  <!-- TOP BAR -->
   <div id="top-bar" style="display:none">
-    <div id="region-info">☀ Unknown Region</div>
+    <div id="location-info">
+      <span id="region-name">☀ Unknown Region</span>
+      <span id="parcel-name"></span>
+      <span id="currency-display">L$0</span>
+    </div>
     <div id="position-display">0, 0, 0</div>
   </div>
 
-  <!-- RIGHT PANEL (minimap + friends) -->
+  <!-- RIGHT PANEL -->
   <div id="right-panel" style="display:none">
     <div id="minimap"><canvas id="minimap-canvas" width="180" height="180"></canvas></div>
     <div id="friends-panel">
-      <div id="friends-header">
-        <span>&#128101; Friends</span>
-        <span id="online-count">0</span>
-      </div>
+      <div id="friends-header"><span>&#128101; Friends</span><span id="online-count">0</span></div>
       <div id="friends-list"></div>
     </div>
   </div>
 
-  <!-- IM PANEL (floating) -->
-  <div id="im-panel">
-    <div id="im-header">
-      <span id="im-title">IM</span>
-      <span style="font-size:10px;color:#666">✕</span>
+  <!-- CAMERA CONTROL PANEL -->
+  <div id="camera-panel" style="display:none">
+    <!-- Movement d-pad -->
+    <div class="cam-dpad">
+      <div></div>
+      <button class="cam-btn dpad" data-move="0,0,1">&#9650;</button>
+      <div></div>
+      <button class="cam-btn dpad" data-move="-1,0,0">&#9664;</button>
+      <button class="cam-btn dpad" data-move="0,1,0" title="Up">&#8593;</button>
+      <button class="cam-btn dpad" data-move="1,0,0">&#9654;</button>
+      <div></div>
+      <button class="cam-btn dpad" data-move="0,0,-1">&#9660;</button>
+      <div></div>
     </div>
-    <div id="im-messages"></div>
-    <form id="im-form">
-      <input id="im-input" placeholder="Type a message..." autocomplete="off">
-      <button type="submit" class="chat-send-btn">Send</button>
+    <!-- Zoom -->
+    <div class="cam-zoom">
+      <button class="cam-btn" id="zoom-in">+</button>
+      <input type="range" id="zoom-slider" min="2" max="200" value="30" orient="vertical">
+      <button class="cam-btn" id="zoom-out">−</button>
+    </div>
+    <!-- Camera buttons -->
+    <div class="cam-row">
+      <button class="cam-btn" id="cam-reset" title="Reset view">⌂</button>
+      <button class="cam-btn" id="cam-fly" title="Toggle fly">🕊</button>
+    </div>
+  </div>
+
+  <!-- FLOATING CHAT WINDOW -->
+  <div id="chat-window" style="display:none">
+    <div id="chat-titlebar">
+      <span>&#128172; Chat</span>
+    </div>
+    <div id="chat-tabs">
+      <div class="chat-tab active" data-tab="local">Nearby</div>
+      <div class="chat-tab" data-tab="im">IMs</div>
+    </div>
+    <div id="chat-messages"></div>
+    <div id="chat-input-bar">
+      <input id="chat-input" placeholder="Chat..." autocomplete="off">
+      <button id="chat-send" class="chat-send">Send</button>
+    </div>
+  </div>
+
+  <!-- TELEPORT BAR -->
+  <div id="teleport-bar">
+    <form id="teleport-form">
+      <input id="teleport-input" placeholder="Region name...">
+      <button type="submit" class="tp-btn">Teleport</button>
     </form>
   </div>
 
-  <!-- BOTTOM BAR -->
-  <div id="bottom-bar" style="display:none">
-    <!-- Chat (left) -->
-    <div id="chat-section">
-      <div id="chat-messages"></div>
-      <form id="chat-form">
-        <input id="chat-input" placeholder="Chat..." autocomplete="off">
-        <button type="submit" class="chat-send-btn">Send</button>
-      </form>
+  <!-- IM WINDOW -->
+  <div id="im-window">
+    <div id="im-header" style="padding:5px 8px;font-size:11px;color:#6ab0ff;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;cursor:pointer">
+      <span id="im-title">IM</span><span style="color:#666;font-size:10px">✕</span>
     </div>
-    <!-- Controls (center) -->
-    <div id="controls-section">
-      <form id="teleport-form">
-        <input id="teleport-input" placeholder="Region name..." autocomplete="off">
-        <button type="submit" class="tp-btn">Teleport</button>
-      </form>
-      <div class="move-hint">WASD fly · RMB orbit · Scroll zoom · Space/Ctrl up/down</div>
+    <div id="im-messages" style="max-height:150px;overflow-y:auto;padding:6px;font-size:11px"></div>
+    <div style="display:flex;gap:3px;padding:5px;border-top:1px solid rgba(255,255,255,0.08)">
+      <input id="im-input" placeholder="Message..." style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:white;padding:3px 6px;border-radius:3px;font-size:11px" autocomplete="off">
+      <button id="im-send" class="chat-send">Send</button>
     </div>
   </div>
 

@@ -1,28 +1,29 @@
 import * as THREE from 'three';
 
 /**
- * Camera controller for SL-style fly camera.
- * Right-click drag: orbit around target
- * Scroll: zoom
- * WASD: fly (relative to camera direction)
- * Space/Ctrl: fly up/down
+ * Camera controller with d-pad buttons (Firestorm-style).
+ * - Click d-pad buttons for movement
+ * - Right-click drag: orbit around target
+ * - Scroll: zoom
+ * - Zoom slider
  */
 export class CameraController {
   private camera: THREE.PerspectiveCamera;
   private domElement: HTMLElement;
   private target = new THREE.Vector3(0, 10, 0);
   private distance = 30;
-  private phi = Math.PI / 4; // elevation angle
-  private theta = 0; // azimuth angle
+  private phi = Math.PI / 4;
+  private theta = 0;
   private isDragging = false;
   private lastMouse = { x: 0, y: 0 };
-  private keys = new Set<string>();
-  private flySpeed = 20; // units per second
+  private flySpeed = 15;
+  private moveDirection = new THREE.Vector3(0, 0, 0);
 
   constructor(camera: THREE.PerspectiveCamera, domElement: HTMLElement) {
     this.camera = camera;
     this.domElement = domElement;
-    this.setupListeners();
+    this.setupOrbit();
+    this.setupDpad();
     this.updateCamera();
   }
 
@@ -32,43 +33,56 @@ export class CameraController {
   }
 
   setTargetFromSL(x: number, y: number, z: number) {
-    // SL coords: X=forward, Y=left, Z=up → Three.js: X=right, Y=up, Z=forward
     this.target.set(x, z, y);
     this.updateCamera();
   }
 
   update(deltaTime: number) {
-    if (this.keys.size === 0) return;
+    if (this.moveDirection.lengthSq() < 0.001) return;
 
-    // Calculate forward/right vectors from camera angles
     const forward = new THREE.Vector3(
-      Math.sin(this.theta) * Math.cos(this.phi),
-      Math.sin(this.phi),
-      Math.cos(this.theta) * Math.cos(this.phi)
+      Math.sin(this.theta), 0, Math.cos(this.theta)
     ).normalize();
-
-    const right = new THREE.Vector3(
-      Math.cos(this.theta),
-      0,
-      -Math.sin(this.theta)
-    ).normalize();
-
+    const right = new THREE.Vector3(Math.cos(this.theta), 0, -Math.sin(this.theta)).normalize();
     const up = new THREE.Vector3(0, 1, 0);
     const speed = this.flySpeed * deltaTime;
 
-    const move = new THREE.Vector3(0, 0, 0);
-    if (this.keys.has('KeyW')) move.add(forward);
-    if (this.keys.has('KeyS')) move.sub(forward);
-    if (this.keys.has('KeyD')) move.add(right);
-    if (this.keys.has('KeyA')) move.sub(right);
-    if (this.keys.has('Space')) move.add(up);
-    if (this.keys.has('ControlLeft') || this.keys.has('ControlRight')) move.sub(up);
+    const move = new THREE.Vector3();
+    if (this.moveDirection.z > 0) move.add(forward);  // forward
+    if (this.moveDirection.z < 0) move.sub(forward);  // back
+    if (this.moveDirection.x > 0) move.add(right);     // right
+    if (this.moveDirection.x < 0) move.sub(right);     // left
+    if (this.moveDirection.y > 0) move.add(up);         // up
+    if (this.moveDirection.y < 0) move.sub(up);         // down
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(speed);
       this.target.add(move);
       this.updateCamera();
     }
+  }
+
+  // Called by d-pad buttons
+  startMove(dx: number, dy: number, dz: number) {
+    this.moveDirection.set(dx, dy, dz);
+  }
+
+  stopMove() {
+    this.moveDirection.set(0, 0, 0);
+  }
+
+  setZoom(distance: number) {
+    this.distance = Math.max(2, Math.min(200, distance));
+    this.updateCamera();
+  }
+
+  getZoom(): number { return this.distance; }
+
+  resetView() {
+    this.theta = 0;
+    this.phi = Math.PI / 4;
+    this.distance = 30;
+    this.updateCamera();
   }
 
   private updateCamera() {
@@ -79,52 +93,28 @@ export class CameraController {
     this.camera.lookAt(this.target);
   }
 
-  private setupListeners() {
-    // Right-click drag = orbit
+  private setupOrbit() {
     this.domElement.addEventListener('mousedown', (e) => {
-      if (e.button === 2) {
-        this.isDragging = true;
-        this.lastMouse.x = e.clientX;
-        this.lastMouse.y = e.clientY;
-      }
+      if (e.button === 2) { this.isDragging = true; this.lastMouse = { x: e.clientX, y: e.clientY }; }
     });
-
     window.addEventListener('mousemove', (e) => {
       if (!this.isDragging) return;
       const dx = e.clientX - this.lastMouse.x;
       const dy = e.clientY - this.lastMouse.y;
-      this.lastMouse.x = e.clientX;
-      this.lastMouse.y = e.clientY;
-
+      this.lastMouse = { x: e.clientX, y: e.clientY };
       this.theta -= dx * 0.005;
       this.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.01, this.phi + dy * 0.005));
       this.updateCamera();
     });
-
-    window.addEventListener('mouseup', (e) => {
-      if (e.button === 2) this.isDragging = false;
-    });
-
-    // Scroll = zoom
+    window.addEventListener('mouseup', (e) => { if (e.button === 2) this.isDragging = false; });
     this.domElement.addEventListener('wheel', (e) => {
       this.distance = Math.max(2, Math.min(200, this.distance + e.deltaY * 0.05));
       this.updateCamera();
     });
-
-    // WASD keys — skip when typing in input fields
-    window.addEventListener('keydown', (e) => {
-      const active = document.activeElement;
-      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
-      if (e.code.startsWith('Key') || e.code === 'Space' || e.code === 'ControlLeft' || e.code === 'ControlRight') {
-        this.keys.add(e.code);
-      }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      this.keys.delete(e.code);
-    });
-
-    // Prevent context menu
     this.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  private setupDpad() {
+    // D-pad buttons are set up in HTML, we listen via event delegation
   }
 }
