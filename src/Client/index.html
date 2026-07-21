@@ -159,10 +159,6 @@
       <div id="avatar-create-error" style="color:#ef5350;font-size:0.75rem;margin-top:3px;display:none"></div>
     </div>
     <button id="connect-btn" class="btn btn-primary w-100 mt-2" disabled>Enter World</button>
-    <div style="display:flex;gap:4px;margin-top:4px">
-      <button id="switch-avatar-btn" class="btn btn-sm-action" style="flex:1">Switch</button>
-      <button id="logout-btn" class="btn btn-sm-action" style="flex:1">Logout</button>
-    </div>
   </div>
 
   <!-- TOP BAR -->
@@ -170,9 +166,13 @@
     <div id="location-info">
       <span id="region-name">☀ Unknown Region</span>
       <span id="parcel-name"></span>
-      <span id="currency-display">L$0</span>
+      <span id="currency-display">Currency 0</span>
     </div>
-    <div id="position-display">0, 0, 0</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <span id="position-display">0, 0, 0</span>
+      <button id="switch-avatar-btn" class="cam-btn" title="Switch avatar">👤</button>
+      <button id="logout-btn" class="cam-btn" title="Logout">⏻</button>
+    </div>
   </div>
 
   <!-- RIGHT PANEL -->

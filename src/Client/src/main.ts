@@ -201,18 +201,26 @@ connectBtn.addEventListener('click', async () => {
   } catch (err) { console.error('Connect failed:', err); }
 });
 
-// === SWITCH / LOGOUT ===
+// === SWITCH AVATAR (from top bar) ===
 switchAvatarBtn.addEventListener('click', async () => {
   if (gridClient) { await gridClient.stop(); gridClient = null; }
-  selectedAvatarId = null; hideWorldUI(); avatarPanel.style.display = 'block'; await loadAvatars();
+  selectedAvatarId = null;
+  hideWorldUI();
+  avatarPanel.style.display = 'block';
+  await loadAvatars();
   if (sceneManager) { sceneManager.renderer.dispose(); viewport.innerHTML = ''; sceneManager = null; }
   minimap = null;
 });
 
+// === LOGOUT (from top bar) ===
 logoutBtn.addEventListener('click', async () => {
   if (gridClient) { await gridClient.stop(); gridClient = null; }
-  authToken = ''; selectedAvatarId = null; hideWorldUI();
-  avatarPanel.style.display = 'none'; loginPanel.style.display = 'block'; loginForm.reset();
+  authToken = '';
+  selectedAvatarId = null;
+  hideWorldUI();
+  avatarPanel.style.display = 'none';
+  loginPanel.style.display = 'block';
+  loginForm.reset();
   if (sceneManager) { sceneManager.renderer.dispose(); viewport.innerHTML = ''; sceneManager = null; }
   minimap = null;
 });
