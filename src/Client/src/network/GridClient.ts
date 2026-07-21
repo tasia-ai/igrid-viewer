@@ -38,6 +38,7 @@ export class GridClient {
     private onRegionConnected?: (regionName: string, regionX: number, regionY: number) => void,
     private onParcelInfo?: (name: string, area: number) => void,
     private onBalanceUpdate?: (balance: number) => void,
+    private onCurrencySymbol?: (symbol: string) => void,
   ) {
     this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
     this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
@@ -63,6 +64,8 @@ export class GridClient {
         new THREE.Vector3(data.position.x, data.position.z, data.position.y)
       );
       this.onRegionConnected?.(data.regionName, data.regionX, data.regionY);
+      this.onBalanceUpdate?.(data.balance);
+      this.onCurrencySymbol?.(data.currencySymbol);
     });
 
     hub.on('ObjectUpdate', (data: any) => {

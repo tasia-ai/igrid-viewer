@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { SceneManager } from './engine/SceneManager';
 import { GridClient } from './network/GridClient';
 import { MinimapRenderer } from './engine/MinimapRenderer';
@@ -39,6 +40,7 @@ let sceneManager: SceneManager | null = null;
 let minimap: MinimapRenderer | null = null;
 let selectedAvatarId: number | null = null;
 let isRegisterMode = false;
+let currencySym = 'Currency';
 
 // === AUTH ===
 toggleAuth.addEventListener('click', (e) => {
@@ -135,7 +137,19 @@ document.querySelectorAll('.cam-dpad .cam-btn[data-move]').forEach((btn) => {
 document.getElementById('zoom-in')!.addEventListener('click', () => { gridClient?.camera?.setZoom((gridClient?.camera?.getZoom() ?? 30) - 5); zoomSlider.value = String(gridClient?.camera?.getZoom()); });
 document.getElementById('zoom-out')!.addEventListener('click', () => { gridClient?.camera?.setZoom((gridClient?.camera?.getZoom() ?? 30) + 5); zoomSlider.value = String(gridClient?.camera?.getZoom()); });
 document.getElementById('cam-reset')!.addEventListener('click', () => { gridClient?.camera?.resetView(); zoomSlider.value = '30'; });
-document.getElementById('cam-fly')!.addEventListener('click', () => { /* toggle fly mode */ });
+
+// Draw distance
+const drawDistSlider = document.getElementById('draw-dist') as HTMLInputElement;
+const drawDistLabel = document.getElementById('draw-dist-label')!;
+drawDistSlider?.addEventListener('input', () => {
+  const dist = Number(drawDistSlider.value);
+  drawDistLabel.textContent = String(dist);
+  if (sceneManager) {
+    sceneManager.camera.far = dist * 2;
+    sceneManager.camera.updateProjectionMatrix();
+    sceneManager.scene.fog = new THREE.Fog(0x87ceeb, dist * 0.8, dist * 2);
+  }
+});
 zoomSlider.addEventListener('input', () => { gridClient?.camera?.setZoom(Number(zoomSlider.value)); });
 
 // === SHOW/HIDE WORLD UI ===
@@ -167,7 +181,8 @@ connectBtn.addEventListener('click', async () => {
     (x, y, h) => { minimap?.updatePatch(x, y, h); },
     (rname, rx, ry) => { regionName.textContent = `☀ ${rname}`; parcelName.textContent = `(${rx}, ${ry})`; },
     (pname, area) => { parcelName.textContent = pname; },
-    (balance) => { currencyDisplay.textContent = `L$${balance.toLocaleString()}`; },
+    (balance) => { currencyDisplay.textContent = `${currencySym} ${balance.toLocaleString()}`; },
+    (sym) => { currencySym = sym; currencyDisplay.textContent = `${sym} ${currencyDisplay.textContent?.replace(/^[^\d]*\s*/, '') || '0'}`; },
   );
   try {
     await gridClient.start();

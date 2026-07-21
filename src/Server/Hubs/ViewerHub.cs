@@ -202,6 +202,7 @@ public class ViewerHub : Hub
         var regionHandle = client.Network.CurrentSim?.Handle ?? 0;
         var regionX = (int)((regionHandle >> 32) & 0xFFFFFFFF);
         var regionY = (int)(regionHandle & 0xFFFFFFFF);
+        var balance = client.Self.Balance;
         await caller.SendAsync("AvatarConnected", new
         {
             AvatarId = avatarId,
@@ -209,6 +210,8 @@ public class ViewerHub : Hub
             RegionName = regionName,
             RegionX = regionX,
             RegionY = regionY,
+            Balance = balance,
+            CurrencySymbol = "Doritos",
             Position = new { X = client.Self.SimPosition.X, Y = client.Self.SimPosition.Y, Z = client.Self.SimPosition.Z }
         });
 
