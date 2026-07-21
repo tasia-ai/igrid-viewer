@@ -1,235 +1,124 @@
 import * as THREE from 'three';
 
-/**
- * SL texture format codes from OpenMetaverse.
- */
-export enum TextureFormat {
-  RGBA8 = 0,
-  DXT1 = 1,
-  DXT3 = 2,
-  DXT5 = 3,
-}
-
-/**
- * SL texture entry face data from LibreMetaverse.
- * Raw binary layout from Primitive.TextureEntryFace.
- */
 export interface SLTextureFace {
-  textureId?: string;
+  textureId: string;
   repeatU: number;
   repeatV: number;
   offsetU: number;
   offsetV: number;
   rotation: number;
-  materialId?: string;
 }
 
-/**
- * PBR material properties from SL/OpenSim.
- * Maps to the PBR metallic-roughness workflow.
- */
-export interface PBRMaterialProps {
-  baseColorTexture?: string;
-  baseColorFactor?: [number, number, number, number];
-  metallicTexture?: string;
-  metallicFactor?: number;
-  roughnessTexture?: string;
-  roughnessFactor?: number;
-  normalTexture?: string;
-  emissiveTexture?: string;
-  emissiveFactor?: [number, number, number];
-}
-
-/**
- * Material cache keyed by texture UUID to avoid duplicate loads.
- */
 const materialCache = new Map<string, THREE.Material | THREE.Texture>();
+const failedTextures = new Set<string>(); // Cache 404s to avoid repeat requests
 
 /**
- * Loads and applies PBR materials from SL/OpenSim texture entries.
- * Uses Three.js MeshStandardMaterial (PBR metallic-roughness workflow).
+ * PBR Material loader for SL textures.
+ * Uses server proxy endpoint (no auth needed — asset server is public HTTP).
+ * Caches textures in browser (via HTTP Cache-Control headers).
+ * Skips zero-UUID textures and caches 404 failures.
  */
 export class PBRMaterialLoader {
   private textureLoader = new THREE.TextureLoader();
-  private baseUrl: string;
-  private authToken: string;
 
-  constructor(baseUrl: string, authToken: string) {
-    this.baseUrl = baseUrl;
-    this.authToken = authToken;
-  }
+  constructor(private baseUrl: string, private authToken: string) {}
 
-  /**
-   * Create a Three.js material from SL texture entry face data.
-   */
   async loadFromFace(face: SLTextureFace): Promise<THREE.MeshStandardMaterial> {
-    if (!face.textureId) {
-      return new THREE.MeshStandardMaterial({
-        color: 0xcccccc,
-        roughness: 0.7,
-        metalness: 0.1,
-      });
+    if (!face.textureId || face.textureId === '00000000-0000-0000-0000-000000000000') {
+      return new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7, metalness: 0.1 });
     }
 
-    const cached = materialCache.get(face.textureId);
-    if (cached instanceof THREE.MeshStandardMaterial) {
-      return cached.clone();
+    const cacheKey = face.textureId;
+    if (failedTextures.has(cacheKey)) {
+      return new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7, metalness: 0.1 });
     }
 
-    const material = new THREE.MeshStandardMaterial({
-      roughness: 0.7,
-      metalness: 0.1,
-    });
+    const cachedMat = materialCache.get(cacheKey);
+    if (cachedMat instanceof THREE.MeshStandardMaterial) {
+      const mat = cachedMat.clone();
+      if (face.repeatU !== 1 || face.repeatV !== 1) {
+        mat.map = mat.map?.clone() ?? null;
+        if (mat.map) {
+          mat.map.repeat.set(face.repeatU, face.repeatV);
+          mat.map.offset.set(face.offsetU, face.offsetV);
+          mat.map.rotation = face.rotation;
+          mat.map.needsUpdate = true;
+        }
+      }
+      return mat;
+    }
+
+    const material = new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.1 });
 
     try {
       const texture = await this.loadTexture(face.textureId);
       material.map = texture;
       material.needsUpdate = true;
-    } catch (err) {
-      console.warn(`[Material] Failed to load texture ${face.textureId}:`, err);
+    } catch {
+      failedTextures.add(cacheKey); // Don't retry failed textures
     }
 
-    materialCache.set(face.textureId, material);
+    materialCache.set(cacheKey, material);
     return material;
   }
 
-  /**
-   * Create a Three.js material from full PBR material properties.
-   */
-  async loadPBR(props: PBRMaterialProps): Promise<THREE.MeshStandardMaterial> {
-    const material = new THREE.MeshStandardMaterial({
-      roughness: props.roughnessFactor ?? 0.7,
-      metalness: props.metallicFactor ?? 0.0,
-    });
-
-    // Base color
-    if (props.baseColorFactor) {
-      const [r, g, b, a] = props.baseColorFactor;
-      material.color.setRGB(r, g, b);
-      if (a < 1.0) {
-        material.transparent = true;
-        material.opacity = a;
-      }
-    }
-
-    // Base color texture
-    if (props.baseColorTexture) {
-      try {
-        const tex = await this.loadTexture(props.baseColorTexture);
-        material.map = tex;
-      } catch (err) {
-        console.warn(`[Material] Failed to load base color texture:`, err);
-      }
-    }
-
-    // Metallic-roughness texture (single texture, R=metallic, G=roughness in GLTF)
-    if (props.metallicTexture) {
-      try {
-        const tex = await this.loadTexture(props.metallicTexture);
-        material.metalnessMap = tex;
-        material.roughnessMap = tex;
-      } catch (err) {
-        console.warn(`[Material] Failed to load metallic/roughness texture:`, err);
-      }
-    }
-
-    // Normal map
-    if (props.normalTexture) {
-      try {
-        const tex = await this.loadTexture(props.normalTexture);
-        material.normalMap = tex;
-        material.normalScale.set(1, 1);
-      } catch (err) {
-        console.warn(`[Material] Failed to load normal texture:`, err);
-      }
-    }
-
-    // Emissive
-    if (props.emissiveTexture) {
-      try {
-        const tex = await this.loadTexture(props.emissiveTexture);
-        material.emissiveMap = tex;
-      } catch (err) {
-        console.warn(`[Material] Failed to load emissive texture:`, err);
-      }
-    }
-
-    if (props.emissiveFactor) {
-      const [r, g, b] = props.emissiveFactor;
-      material.emissive.setRGB(r, g, b);
-    }
-
-    material.needsUpdate = true;
-    return material;
-  }
-
-  /**
-   * Load a texture through the server proxy endpoint.
-   * The proxy handles grid authentication and caching.
-   */
   private async loadTexture(textureId: string): Promise<THREE.Texture> {
     const cached = materialCache.get(`tex:${textureId}`);
-    if (cached instanceof THREE.Texture) {
-      return cached;
+    if (cached instanceof THREE.Texture) return cached;
+
+    // Skip zero UUIDs
+    if (!textureId || textureId === '00000000-0000-0000-0000-000000000000') {
+      throw new Error('Zero UUID');
     }
 
     try {
-      // Use fetch with auth header (THREE.TextureLoader can't send headers)
-      const res = await fetch(`${this.baseUrl}/api/textures/${textureId}`, {
-        headers: { Authorization: `Bearer ${this.authToken}` },
-      });
+      // No auth header needed — asset server is public HTTP
+      const res = await fetch(`${this.baseUrl}/api/textures/${textureId}`);
 
-      if (!res.ok) throw new Error(`Texture ${textureId}: ${res.status}`);
+      if (res.status === 304) {
+        // Browser cache hit — create texture from cache
+        const blob = await res.blob();
+        return this.blobToTexture(blob, textureId);
+      }
+
+      if (!res.ok) {
+        failedTextures.add(textureId);
+        throw new Error(`Texture ${textureId}: ${res.status}`);
+      }
 
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-
-      // Load via Image element
-      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`Failed to load texture image ${textureId}`));
-        img.src = url;
-      });
-
-      const texture = new THREE.Texture(image);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.needsUpdate = true;
-      materialCache.set(`tex:${textureId}`, texture);
-
-      // Revoke blob URL after texture is uploaded to GPU
-      URL.revokeObjectURL(url);
-
-      return texture;
+      return this.blobToTexture(blob, textureId);
     } catch (err) {
-      console.warn(`[Material] Failed to load texture ${textureId}:`, err);
-      // Return a default white texture
-      const canvas = document.createElement('canvas');
-      canvas.width = 4;
-      canvas.height = 4;
-      const ctx = canvas.getContext('2d')!;
-      ctx.fillStyle = '#cccccc';
-      ctx.fillRect(0, 0, 4, 4);
-      const tex = new THREE.CanvasTexture(canvas);
-      materialCache.set(`tex:${textureId}`, tex);
-      return tex;
+      console.warn(`[Material] Texture ${textureId} failed:`, err);
+      throw err;
     }
   }
 
-  /**
-   * Dispose all cached materials and textures.
-   */
+  private blobToTexture(blob: Blob, textureId: string): Promise<THREE.Texture> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const texture = new THREE.Texture(img);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.needsUpdate = true;
+        materialCache.set(`tex:${textureId}`, texture);
+        URL.revokeObjectURL(url);
+        resolve(texture);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`Failed to decode image ${textureId}`));
+      };
+      img.src = url;
+    });
+  }
+
   dispose(): void {
     for (const [, mat] of materialCache) {
-      if (mat instanceof THREE.Material) {
-        mat.dispose();
-      }
-      if (mat instanceof THREE.Texture) {
-        mat.dispose();
-      }
+      if (mat instanceof THREE.Material) mat.dispose();
     }
-    materialCache.clear();
   }
 }
