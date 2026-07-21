@@ -22,27 +22,20 @@ packages/
 *.swp
 *~
 
-# Node / npm
+# Node
 node_modules/
 dist/
-.vite/
-*.tsbuildinfo
 
 # OS
 .DS_Store
 Thumbs.db
-Desktop.ini
 
-# Database
+# Environment
+.env
+.env.local
+
+# Docker
+docker-compose.override.yml
+
+# SQLite database (runtime data)
 *.db
-*.db-shm
-*.db-wal
-
-# Secrets
-*.env
-appsettings.Production.json
-
-# Logs
-logs/
-*.log
-node_modules/
