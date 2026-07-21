@@ -384,9 +384,12 @@ interface Friend {
 
 const friends = new Map<string, Friend>();
 let imTarget: Friend | null = null;
+const imHistories = new Map<string, { from: string; message: string; time: Date }[]>();
+let imOpen = false;
 
 // Toggle contacts list
-contactsHeader.addEventListener('click', () => {
+contactsHeader.addEventListener('click', (e) => {
+  e.stopPropagation();
   contactsList.style.display = contactsList.style.display === 'none' ? 'block' : 'none';
 });
 
@@ -397,11 +400,14 @@ function renderFriends(): void {
   for (const friend of friends.values()) {
     if (friend.online) online++;
     const div = document.createElement('div');
+    const unread = imHistories.get(friend.id)?.filter(m => m.from !== 'You').length ?? 0;
+    const unreadBadge = unread > 0 ? ` <span style="color:#ef5350;font-weight:bold">(${unread})</span>` : '';
     div.style.cssText = `padding:3px 6px;cursor:pointer;font-size:11px;border-radius:3px;margin:1px 0;color:${friend.online ? '#8f8' : '#888'}`;
-    div.textContent = `${friend.online ? '● ' : '○ '}${friend.name}`;
-    if (friend.online) {
-      div.addEventListener('click', () => openIM(friend));
-    }
+    div.innerHTML = `${friend.online ? '● ' : '○ '}${escapeHtml(friend.name)}${unreadBadge}`;
+    div.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openIM(friend);
+    });
     contactsList.appendChild(div);
   }
   onlineCount.textContent = online.toString();
@@ -410,9 +416,21 @@ function renderFriends(): void {
 // Open IM panel with a friend
 function openIM(friend: Friend): void {
   imTarget = friend;
+  imOpen = true;
   imHeader.textContent = `IM with ${friend.name}`;
+  // Restore history
   imMessages.innerHTML = '';
+  const history = imHistories.get(friend.id) || [];
+  for (const msg of history) {
+    const line = document.createElement('div');
+    const color = msg.from === 'You' ? '#4fc3f7' : '#8f8';
+    line.innerHTML = `<b style="color:${color}">${escapeHtml(msg.from)}:</b> ${escapeHtml(msg.message)}`;
+    imMessages.appendChild(line);
+  }
+  imMessages.scrollTop = imMessages.scrollHeight;
   imPanel.style.display = 'block';
+  contactsList.style.display = 'none';
+  imInput.focus();
 }
 
 // Send IM
@@ -423,6 +441,10 @@ imForm.addEventListener('submit', async (e) => {
 
   try {
     await gridClient.sendIM(imTarget.id, msg);
+    // Store in history
+    if (!imHistories.has(imTarget.id)) imHistories.set(imTarget.id, []);
+    imHistories.get(imTarget.id)!.push({ from: 'You', message: msg, time: new Date() });
+
     const line = document.createElement('div');
     line.innerHTML = `<b style="color:#4fc3f7">You:</b> ${escapeHtml(msg)}`;
     imMessages.appendChild(line);
@@ -433,27 +455,37 @@ imForm.addEventListener('submit', async (e) => {
   }
 });
 
+// Close IM panel
+imHeader.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (imOpen) {
+    imPanel.style.display = 'none';
+    imOpen = false;
+    imTarget = null;
+  }
+});
+
 // Receive IM
 function addIMMessage(from: string, message: string, fromId?: string): void {
-  // Check if this IM is for the open conversation
-  if (imTarget && fromId === imTarget.id || from === imTarget?.name) {
+  // Store in history for the sender
+  const histId = fromId || from;
+  if (!imHistories.has(histId)) imHistories.set(histId, []);
+  imHistories.get(histId)!.push({ from, message, time: new Date() });
+
+  // If this IM is for the currently open conversation, show it
+  if (imTarget && imOpen && (fromId === imTarget.id || from === imTarget?.name)) {
     const line = document.createElement('div');
     line.innerHTML = `<b style="color:#8f8">${escapeHtml(from)}:</b> ${escapeHtml(message)}`;
     imMessages.appendChild(line);
     imMessages.scrollTop = imMessages.scrollHeight;
   }
-  // Also show in local chat
-  addChatMessage(`[IM] ${from}`, message);
-}
 
-// Close IM when clicking outside
-document.addEventListener('click', (e) => {
-  const target = e.target as HTMLElement;
-  if (!imPanel.contains(target) && !contactsList.contains(target) && !contactsHeader.contains(target)) {
-    imPanel.style.display = 'none';
-    imTarget = null;
-  }
-});
+  // Show in local chat too
+  addChatMessage(`[IM] ${from}`, message);
+
+  // Update friend list to show unread badge
+  renderFriends();
+}
 
 function escapeHtml(str: string): string {
   const div = document.createElement('div');
