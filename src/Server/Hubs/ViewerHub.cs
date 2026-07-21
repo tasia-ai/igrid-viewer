@@ -232,14 +232,18 @@ public class ViewerHub : Hub
 
     public async Task SendChat(string message, int channel = 0)
     {
-        var session = _grid.GetUserSessions(UserId).FirstOrDefault();
+        var sessions = _grid.GetUserSessions(UserId).ToList();
+        Console.WriteLine($"[ViewerHub] SendChat: userId={UserId}, sessions={sessions.Count}");
+        var session = sessions.FirstOrDefault();
         if (session == null) { await Clients.Caller.SendAsync("Error", "No active avatar"); return; }
         session.Client.Self.Chat(message, channel, ChatType.Normal, false);
     }
 
     public async Task SendIM(string targetId, string message)
     {
-        var session = _grid.GetUserSessions(UserId).FirstOrDefault();
+        var sessions = _grid.GetUserSessions(UserId).ToList();
+        Console.WriteLine($"[ViewerHub] SendIM: userId={UserId}, sessions={sessions.Count}");
+        var session = sessions.FirstOrDefault();
         if (session == null) { await Clients.Caller.SendAsync("Error", "No active avatar"); return; }
         var userPassword = await GetUserPasswordAsync();
         try
