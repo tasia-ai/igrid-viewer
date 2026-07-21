@@ -9,6 +9,7 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Avatar> Avatars => Set<Avatar>();
+    public DbSet<IMMessage> IMMessages => Set<IMMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

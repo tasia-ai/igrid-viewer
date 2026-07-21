@@ -4,8 +4,11 @@ using System.Security.Claims;
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
+using IGrid.Server.Data;
+using IGrid.Server.Models;
 using IGrid.Server.Services;
 
 namespace IGrid.Server.Hubs;
@@ -14,10 +17,11 @@ namespace IGrid.Server.Hubs;
 public class ViewerHub : Hub
 {
     private readonly GridConnectionService _grid;
+    private readonly AppDbContext _db;
     private static readonly HttpClient _httpClient = new();
     private static readonly ConcurrentDictionary<UUID, byte[]> _meshCache = new();
 
-    public ViewerHub(GridConnectionService grid) { _grid = grid; }
+    public ViewerHub(GridConnectionService grid, AppDbContext db) { _grid = grid; _db = db; }
 
     private int UserId => int.Parse(
         Context.User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
@@ -26,17 +30,11 @@ public class ViewerHub : Hub
     {
         Console.WriteLine($"[ViewerHub] ConnectAvatar: avatarId={avatarId}");
         var session = await _grid.ConnectAvatarAsync(UserId, avatarId);
-        if (session == null)
-        {
-            await Clients.Caller.SendAsync("Error", "Failed to connect avatar");
-            return;
-        }
+        if (session == null) { await Clients.Caller.SendAsync("Error", "Failed to connect avatar"); return; }
 
         var caller = Clients.Caller;
         var client = session.Client;
-
-        // Track which mesh IDs have already been sent to this client
-        var sentMeshes = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>();
+        var sentMeshes = new ConcurrentDictionary<string, bool>();
 
         // Object updates
         client.Objects.ObjectUpdate += async (_, e) =>
@@ -44,134 +42,85 @@ public class ViewerHub : Hub
             try
             {
                 var prim = e.Prim;
-
                 string? defaultTextureId = null;
-                if (prim.Textures?.DefaultTexture?.TextureID != null &&
-                    prim.Textures.DefaultTexture.TextureID != UUID.Zero)
+                if (prim.Textures?.DefaultTexture?.TextureID != null && prim.Textures.DefaultTexture.TextureID != UUID.Zero)
                     defaultTextureId = prim.Textures.DefaultTexture.TextureID.ToString();
 
                 var faceTextures = new object[6];
                 for (int i = 0; i < 6; i++)
                 {
                     var face = prim.Textures?.GetFace((uint)i);
-                    if (face != null && face.Valid && face.TextureID != UUID.Zero)
-                        faceTextures[i] = new { TextureId = face.TextureID.ToString(), RepeatU = face.RepeatU, RepeatV = face.RepeatV, OffsetU = face.OffsetU, OffsetV = face.OffsetV, Rotation = face.Rotation };
-                    else
-                        faceTextures[i] = null;
+                    faceTextures[i] = (face != null && face.Valid && face.TextureID != UUID.Zero)
+                        ? (object)new { TextureId = face.TextureID.ToString(), RepeatU = face.RepeatU, RepeatV = face.RepeatV, OffsetU = face.OffsetU, OffsetV = face.OffsetV, Rotation = face.Rotation }
+                        : null!;
                 }
 
                 await caller.SendAsync("ObjectUpdate", new
                 {
-                    Id = prim.ID.ToString(),
-                    Name = prim.Properties?.Name ?? "",
+                    Id = prim.ID.ToString(), Name = prim.Properties?.Name ?? "",
                     Position = new { X = prim.Position.X, Y = prim.Position.Y, Z = prim.Position.Z },
                     Rotation = new { X = prim.Rotation.X, Y = prim.Rotation.Y, Z = prim.Rotation.Z, W = prim.Rotation.W },
                     Scale = new { X = prim.Scale.X, Y = prim.Scale.Y, Z = prim.Scale.Z },
-                    PrimType = (int)prim.Type,
-                    TextureId = defaultTextureId,
-                    Faces = faceTextures,
-                    ProfileCurve = (int)prim.PrimData.ProfileCurve,
-                    PathCurve = (int)prim.PrimData.PathCurve,
-                    ProfileBegin = prim.PrimData.ProfileBegin,
-                    ProfileEnd = prim.PrimData.ProfileEnd,
+                    PrimType = (int)prim.Type, TextureId = defaultTextureId, Faces = faceTextures,
+                    ProfileCurve = (int)prim.PrimData.ProfileCurve, PathCurve = (int)prim.PrimData.PathCurve,
+                    ProfileBegin = prim.PrimData.ProfileBegin, ProfileEnd = prim.PrimData.ProfileEnd,
                     ProfileHollow = prim.PrimData.ProfileHollow,
-                    PathBegin = prim.PrimData.PathBegin,
-                    PathEnd = prim.PrimData.PathEnd,
-                    PathScaleX = prim.PrimData.PathScaleX,
-                    PathScaleY = prim.PrimData.PathScaleY,
-                    PathTaperX = prim.PrimData.PathTaperX,
-                    PathTaperY = prim.PrimData.PathTaperY,
-                    PathTwist = prim.PrimData.PathTwist,
-                    PathTwistBegin = prim.PrimData.PathTwistBegin,
+                    PathBegin = prim.PrimData.PathBegin, PathEnd = prim.PrimData.PathEnd,
+                    PathScaleX = prim.PrimData.PathScaleX, PathScaleY = prim.PrimData.PathScaleY,
+                    PathTaperX = prim.PrimData.PathTaperX, PathTaperY = prim.PrimData.PathTaperY,
+                    PathTwist = prim.PrimData.PathTwist, PathTwistBegin = prim.PrimData.PathTwistBegin,
                     PathRevolutions = prim.PrimData.PathRevolutions,
                 });
 
-                // Fetch mesh ONLY if not already sent to this client
                 if (prim.Type == PrimType.Mesh && prim.Sculpt?.SculptTexture != UUID.Zero)
                 {
                     var meshId = prim.Sculpt.SculptTexture;
                     var meshKey = meshId.ToString();
-
                     if (sentMeshes.TryAdd(meshKey, true))
+                    {
                         try
                         {
                             var meshData = await RequestMeshAsync(client, meshId);
                             if (meshData != null && meshData.Length > 0)
-                            {
-                                await caller.SendAsync("MeshData", new
-                                {
-                                    Id = prim.ID.ToString(),
-                                    Data = Convert.ToBase64String(meshData)
-                                });
-                                Console.WriteLine($"[ViewerHub] Sent mesh {meshKey}: {meshData.Length} bytes");
-                            }
+                                await caller.SendAsync("MeshData", new { Id = prim.ID.ToString(), Data = Convert.ToBase64String(meshData) });
                         }
-                        catch (Exception ex) { Console.WriteLine($"[ViewerHub] Mesh error: {ex.Message}"); }
+                        catch { }
+                    }
                 }
             }
-            catch (Exception ex) { Console.WriteLine($"[ViewerHub] ObjectUpdate error: {ex.Message}"); }
+            catch { }
         };
 
-        // Avatar updates
         client.Objects.AvatarUpdate += async (_, e) =>
         {
             if (e.Avatar == null) return;
-            try
-            {
-                await caller.SendAsync("AvatarUpdate", new
-                {
-                    Id = e.Avatar.ID.ToString(),
-                    Name = e.Avatar.Name ?? "Unknown",
-                    Position = new { X = e.Avatar.Position.X, Y = e.Avatar.Position.Y, Z = e.Avatar.Position.Z },
-                    Rotation = new { X = e.Avatar.Rotation.X, Y = e.Avatar.Rotation.Y, Z = e.Avatar.Rotation.Z, W = e.Avatar.Rotation.W }
-                });
-            }
-            catch { }
+            try { await caller.SendAsync("AvatarUpdate", new { Id = e.Avatar.ID.ToString(), Name = e.Avatar.Name ?? "Unknown", Position = new { X = e.Avatar.Position.X, Y = e.Avatar.Position.Y, Z = e.Avatar.Position.Z }, Rotation = new { X = e.Avatar.Rotation.X, Y = e.Avatar.Rotation.Y, Z = e.Avatar.Rotation.Z, W = e.Avatar.Rotation.W } }); } catch { }
         };
 
-        // Terrain
         client.Terrain.LandPatchReceived += async (_, e) =>
-        {
-            try { await caller.SendAsync("TerrainPatch", new { X = e.X, Y = e.Y, PatchSize = e.PatchSize, Heights = e.HeightMap }); }
-            catch { }
-        };
+        { try { await caller.SendAsync("TerrainPatch", new { X = e.X, Y = e.Y, PatchSize = e.PatchSize, Heights = e.HeightMap }); } catch { } };
 
-        // Chat
         client.Self.ChatFromSimulator += async (_, e) =>
         {
             try { await caller.SendAsync("ChatMessage", new { From = e.FromName ?? "Unknown", Message = e.Message, Type = (int)e.Type }); }
             catch { }
         };
 
-        // Parcel info updates
         client.Parcels.ParcelProperties += async (_, e) =>
         {
             try
             {
                 var parcel = client.Parcels.CurrentParcel;
                 if (parcel != null)
-                {
-                    await caller.SendAsync("ParcelInfo", new
-                    {
-                        Name = parcel.Name ?? "Unnamed",
-                        Owner = parcel.OwnerID.ToString(),
-                        Area = parcel.Area,
-                        Auction = parcel.AuctionID,
-                        SalePrice = parcel.SalePrice,
-                    });
-                }
+                    await caller.SendAsync("ParcelInfo", new { Name = parcel.Name ?? "Unnamed", Owner = parcel.OwnerID.ToString(), Area = parcel.Area, SalePrice = parcel.SalePrice });
             }
             catch { }
         };
 
-        // Balance updates
         client.Self.MoneyBalance += async (_, e) =>
-        {
-            try { await caller.SendAsync("BalanceUpdate", new { Balance = e.Balance }); }
-            catch { }
-        };
+        { try { await caller.SendAsync("BalanceUpdate", new { Balance = e.Balance }); } catch { } };
 
-        // IM
+        // IM receive — SAVE TO DB
         client.Self.IM += async (_, e) =>
         {
             try
@@ -180,24 +129,38 @@ public class ViewerHub : Hub
                 if (im.FromAgentID == client.Self.AgentID) return;
                 if (im.GroupIM) return;
                 if (im.Dialog != InstantMessageDialog.MessageFromAgent) return;
-                await caller.SendAsync("InstantMessage", new { From = im.FromAgentName ?? "Unknown", FromId = im.FromAgentID.ToString(), Message = im.Message });
+
+                var fromName = im.FromAgentName ?? "Unknown";
+                var fromId = im.FromAgentID.ToString();
+                var msg = im.Message ?? "";
+
+                // Save to DB
+                try
+                {
+                    _db.IMMessages.Add(new IMMessage
+                    {
+                        UserId = UserId,
+                        OtherId = fromId,
+                        OtherName = fromName,
+                        Message = msg,
+                        FromMe = false,
+                        Timestamp = DateTime.UtcNow
+                    });
+                    await _db.SaveChangesAsync();
+                }
+                catch (Exception ex) { Console.WriteLine($"[ViewerHub] IM save error: {ex.Message}"); }
+
+                await caller.SendAsync("InstantMessage", new { From = fromName, FromId = fromId, Message = msg });
             }
             catch { }
         };
 
-        // Friends
         client.Friends.FriendOnline += async (_, e) =>
-        {
-            try { await caller.SendAsync("FriendUpdate", new { Id = e.Friend.UUID.ToString(), Name = e.Friend.Name ?? "Unknown", Online = true }); }
-            catch { }
-        };
+        { try { await caller.SendAsync("FriendUpdate", new { Id = e.Friend.UUID.ToString(), Name = e.Friend.Name ?? "Unknown", Online = true }); } catch { } };
         client.Friends.FriendOffline += async (_, e) =>
-        {
-            try { await caller.SendAsync("FriendUpdate", new { Id = e.Friend.UUID.ToString(), Name = e.Friend.Name ?? "Unknown", Online = false }); }
-            catch { }
-        };
+        { try { await caller.SendAsync("FriendUpdate", new { Id = e.Friend.UUID.ToString(), Name = e.Friend.Name ?? "Unknown", Online = false }); } catch { } };
 
-        // Connected
+        // Send connected
         var regionName = client.Network.CurrentSim?.Name ?? "Unknown Region";
         var regionHandle = client.Network.CurrentSim?.Handle ?? 0;
         var regionX = (int)((regionHandle >> 32) & 0xFFFFFFFF);
@@ -205,15 +168,34 @@ public class ViewerHub : Hub
         var balance = client.Self.Balance;
         await caller.SendAsync("AvatarConnected", new
         {
-            AvatarId = avatarId,
-            FirstName = client.Self.Name ?? "Unknown",
-            RegionName = regionName,
-            RegionX = regionX,
-            RegionY = regionY,
-            Balance = balance,
-            CurrencySymbol = "Doritos",
+            AvatarId = avatarId, FirstName = client.Self.Name ?? "Unknown",
+            RegionName = regionName, RegionX = regionX, RegionY = regionY,
+            Balance = balance, CurrencySymbol = "Doritos",
             Position = new { X = client.Self.SimPosition.X, Y = client.Self.SimPosition.Y, Z = client.Self.SimPosition.Z }
         });
+
+        // Load IM history from DB
+        try
+        {
+            var history = await _db.IMMessages
+                .Where(m => m.UserId == UserId)
+                .OrderBy(m => m.Timestamp)
+                .ToListAsync();
+
+            Console.WriteLine($"[ViewerHub] Loading {history.Count} IM messages from DB");
+
+            // Group by conversation partner
+            var grouped = history.GroupBy(m => m.OtherId);
+            foreach (var group in grouped)
+            {
+                var otherId = group.Key;
+                var otherName = group.First().OtherName;
+                var msgs = group.Select(m => new { From = m.FromMe ? "You" : otherName, Text = m.Message, Time = m.Timestamp.ToString("HH:mm") }).ToList();
+
+                await caller.SendAsync("IMHistory", new { OtherId = otherId, OtherName = otherName, Messages = msgs });
+            }
+        }
+        catch (Exception ex) { Console.WriteLine($"[ViewerHub] IM history load error: {ex.Message}"); }
 
         // Friends list
         try
@@ -223,7 +205,6 @@ public class ViewerHub : Hub
             {
                 var friendList = friendListField.GetValue(client.Friends) as System.Collections.IEnumerable;
                 if (friendList != null)
-                {
                     foreach (var item in friendList)
                     {
                         var uuidProp = item.GetType().GetProperty("UUID");
@@ -232,74 +213,11 @@ public class ViewerHub : Hub
                         if (uuidProp != null && nameProp != null)
                             await caller.SendAsync("FriendUpdate", new { Id = uuidProp.GetValue(item)?.ToString() ?? "", Name = nameProp.GetValue(item)?.ToString() ?? "Unknown", Online = onlineProp?.GetValue(item) as bool? ?? false });
                     }
-                }
             }
         }
-        catch (Exception ex) { Console.WriteLine($"[ViewerHub] Friends error: {ex.Message}"); }
+        catch { }
 
         Console.WriteLine($"[ViewerHub] Connected as {client.Self.Name} in {regionName}");
-    }
-
-    private async Task<byte[]?> RequestMeshAsync(GridClient client, UUID meshId)
-    {
-        // Check global cache first
-        if (_meshCache.TryGetValue(meshId, out var cached))
-        {
-            Console.WriteLine($"[ViewerHub] Mesh cache hit: {meshId}");
-            return cached;
-        }
-
-        try
-        {
-            // Try HTTP capability first (like Firestorm)
-            var sim = client.Network.CurrentSim;
-            if (sim?.Caps != null)
-            {
-                var meshCapUri = sim.Caps.GetMeshCapURI();
-                if (meshCapUri != null)
-                {
-                    var url = $"{meshCapUri}?mesh_id={meshId}";
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                    var response = await _httpClient.GetAsync(url, cts.Token);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var data = await response.Content.ReadAsByteArrayAsync(cts.Token);
-                        _meshCache[meshId] = data;
-                        Console.WriteLine($"[ViewerHub] Mesh via cap: {data.Length} bytes");
-                        return data;
-                    }
-                    Console.WriteLine($"[ViewerHub] GetMesh cap: {(int)response.StatusCode}");
-                }
-            }
-
-            // Fallback: RequestMesh (UDP)
-            var tcs = new TaskCompletionSource<byte[]?>();
-            client.Assets.RequestMesh(meshId, (bool success, AssetMesh assetMesh) =>
-            {
-                if (success && assetMesh?.AssetData != null && assetMesh.AssetData.Length > 0)
-                    tcs.TrySetResult(assetMesh.AssetData);
-                else
-                {
-                    client.Assets.RequestAsset(meshId, AssetType.Mesh, false,
-                        (AssetDownload transfer, Asset asset) =>
-                        {
-                            tcs.TrySetResult(asset?.AssetData?.Length > 0 ? asset.AssetData : null);
-                        });
-                }
-            });
-
-            using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            cts2.Token.Register(() => tcs.TrySetResult(null));
-            var result = await tcs.Task;
-            if (result != null && result.Length > 0)
-                _meshCache[meshId] = result;
-            return result;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ViewerHub] RequestMesh error: {ex.Message}");
-            return null;
-        }
     }
 
     public async Task SendChat(string message, int channel = 0)
@@ -307,6 +225,37 @@ public class ViewerHub : Hub
         var session = _grid.GetUserSessions(UserId).FirstOrDefault();
         if (session == null) { await Clients.Caller.SendAsync("Error", "No active avatar"); return; }
         session.Client.Self.Chat(message, channel, ChatType.Normal, false);
+    }
+
+    public async Task SendIM(string targetId, string message)
+    {
+        var session = _grid.GetUserSessions(UserId).FirstOrDefault();
+        if (session == null) { await Clients.Caller.SendAsync("Error", "No active avatar"); return; }
+
+        try
+        {
+            if (Guid.TryParse(targetId, out var guid))
+            {
+                session.Client.Self.InstantMessage(new UUID(guid), message);
+
+                // Save to DB
+                try
+                {
+                    _db.IMMessages.Add(new IMMessage
+                    {
+                        UserId = UserId,
+                        OtherId = targetId,
+                        OtherName = "",
+                        Message = message,
+                        FromMe = true,
+                        Timestamp = DateTime.UtcNow
+                    });
+                    await _db.SaveChangesAsync();
+                }
+                catch (Exception ex) { Console.WriteLine($"[ViewerHub] IM save error: {ex.Message}"); }
+            }
+        }
+        catch (Exception ex) { await Clients.Caller.SendAsync("Error", $"IM failed: {ex.Message}"); }
     }
 
     public async Task Teleport(string regionName)
@@ -317,12 +266,40 @@ public class ViewerHub : Hub
         if (!success) await Clients.Caller.SendAsync("Error", "Teleport failed");
     }
 
-    public async Task SendIM(string targetId, string message)
+    private async Task<byte[]?> RequestMeshAsync(GridClient client, UUID meshId)
     {
-        var session = _grid.GetUserSessions(UserId).FirstOrDefault();
-        if (session == null) { await Clients.Caller.SendAsync("Error", "No active avatar"); return; }
-        try { if (Guid.TryParse(targetId, out var guid)) session.Client.Self.InstantMessage(new UUID(guid), message); }
-        catch (Exception ex) { await Clients.Caller.SendAsync("Error", $"IM failed: {ex.Message}"); }
+        if (_meshCache.TryGetValue(meshId, out var cached)) return cached;
+        try
+        {
+            var sim = client.Network.CurrentSim;
+            if (sim?.Caps != null)
+            {
+                var meshCapUri = sim.Caps.GetMeshCapURI();
+                if (meshCapUri != null)
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    var response = await _httpClient.GetAsync($"{meshCapUri}?mesh_id={meshId}", cts.Token);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var data = await response.Content.ReadAsByteArrayAsync(cts.Token);
+                        _meshCache[meshId] = data;
+                        return data;
+                    }
+                }
+            }
+            var tcs = new TaskCompletionSource<byte[]?>();
+            client.Assets.RequestMesh(meshId, (bool s, AssetMesh am) =>
+            {
+                if (s && am?.AssetData?.Length > 0) tcs.TrySetResult(am.AssetData);
+                else client.Assets.RequestAsset(meshId, AssetType.Mesh, false, (AssetDownload tr, Asset a) => tcs.TrySetResult(a?.AssetData?.Length > 0 ? a.AssetData : null));
+            });
+            using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            cts2.Token.Register(() => tcs.TrySetResult(null));
+            var result = await tcs.Task;
+            if (result != null && result.Length > 0) _meshCache[meshId] = result;
+            return result;
+        }
+        catch { return null; }
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

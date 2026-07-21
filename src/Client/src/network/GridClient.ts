@@ -39,6 +39,7 @@ export class GridClient {
     private onParcelInfo?: (name: string, area: number) => void,
     private onBalanceUpdate?: (balance: number) => void,
     private onCurrencySymbol?: (symbol: string) => void,
+    private onIMHistory?: (otherId: string, otherName: string, messages: { from: string; text: string; time: string }[]) => void,
   ) {
     this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
     this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
@@ -154,6 +155,10 @@ export class GridClient {
 
     hub.on('InstantMessage', (data: any) => {
       this.onIM?.(data.from, data.message, data.fromId);
+    });
+
+    hub.on('IMHistory', (data: any) => {
+      this.onIMHistory?.(data.otherId, data.otherName, data.messages);
     });
 
     hub.on('ParcelInfo', (data: any) => {

@@ -183,6 +183,15 @@ connectBtn.addEventListener('click', async () => {
     (pname, area) => { parcelName.textContent = pname; },
     (balance) => { currencyDisplay.textContent = `${currencySym} ${balance.toLocaleString()}`; },
     (sym) => { currencySym = sym; currencyDisplay.textContent = `${sym} ${currencyDisplay.textContent?.replace(/^[^\d]*\s*/, '') || '0'}`; },
+    (otherId, otherName, messages) => {
+      // Load IM history from server
+      if (!convos.has(otherId)) convos.set(otherId, { friendId: otherId, friendName: otherName, messages: [], unread: 0 });
+      const conv = convos.get(otherId)!;
+      for (const m of messages) {
+        conv.messages.push({ from: m.from, text: m.text, time: new Date(m.time) });
+      }
+      renderFriends();
+    },
   );
   try {
     await gridClient.start();
