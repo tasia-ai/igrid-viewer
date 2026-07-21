@@ -34,7 +34,7 @@ export class GridClient {
     private onTeleportStarted?: (destination: string, gridUri?: string, region?: string) => void
   ) {
     this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
-    this.terrain = new TerrainRenderer(sceneManager.scene);
+    this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
     this.objects = new ObjectRenderer(sceneManager.scene, this.materialLoader);
     this.avatars = new AvatarRenderer(sceneManager.scene);
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
