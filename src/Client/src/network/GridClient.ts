@@ -85,26 +85,8 @@ export class GridClient {
     hub.on('MeshData', async (data: any) => {
       try {
         const meshBytes = Uint8Array.from(atob(data.data), c => c.charCodeAt(0));
-        const primObj = this.objects.getPrim(data.id);
-        if (!primObj) return;
-
-        // Decode SL mesh into Three.js geometry
-        const { SLMeshDecoder } = await import('../engine/SLMeshDecoder');
-        const decoder = new SLMeshDecoder();
-        const geometry = await decoder.decode(meshBytes.buffer);
-        geometry.computeBoundingBox();
-        geometry.computeBoundingSphere();
-
-        // Replace geometry on existing mesh
-        primObj.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            child.geometry.dispose();
-            child.geometry = geometry;
-            console.log(`[Grid] Mesh loaded for ${data.id}: ${geometry.attributes.position.count} vertices`);
-          }
-        });
-
-        primObj.userData.meshData = meshBytes.buffer;
+        // Non-blocking mesh decode + geometry swap
+        this.objects.replaceMeshGeometry(data.id, meshBytes.buffer);
       } catch (err) {
         console.warn('[Grid] Failed to decode mesh:', err);
       }

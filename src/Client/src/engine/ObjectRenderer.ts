@@ -12,15 +12,27 @@ export interface PrimData {
   textureId?: string;
   faces?: (any | null)[];
   meshData?: ArrayBuffer;
+  profileCurve?: number;
+  pathCurve?: number;
+  profileBegin?: number;
+  profileEnd?: number;
+  profileHollow?: number;
+  pathBegin?: number;
+  pathEnd?: number;
+  pathScaleX?: number;
+  pathScaleY?: number;
+  pathTaperX?: number;
+  pathTaperY?: number;
+  pathTwist?: number;
+  pathTwistBegin?: number;
+  pathRevolutions?: number;
 }
 
-/**
- * SL PrimType: 1=Box, 2=Cylinder, 3=Prism, 4=Sphere, 5=Torus, 6=Tube, 7=Ring, 8=Sculpt, 9=Mesh
- */
+const DEFAULT_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7, metalness: 0.1 });
+
 export class ObjectRenderer {
   private scene: THREE.Scene;
   private objects: Map<string, THREE.Object3D> = new Map();
-  private meshCache: Map<string, THREE.BufferGeometry> = new Map();
   private materialLoader: PBRMaterialLoader;
   private meshDecoder = new SLMeshDecoder();
 
@@ -29,10 +41,14 @@ export class ObjectRenderer {
     this.materialLoader = materialLoader;
   }
 
+  /**
+   * Update prim — FAST PATH: create geometry immediately with default material,
+   * load texture in background (non-blocking).
+   */
   async updatePrim(prim: PrimData): Promise<void> {
     const existing = this.objects.get(prim.id);
 
-    // If prim already exists, just update position/rotation/scale (fast path)
+    // If already exists, just update position/rotation/scale (instant)
     if (existing) {
       existing.position.set(prim.position.x, prim.position.z, prim.position.y);
       existing.quaternion.set(prim.rotation.x, prim.rotation.z, prim.rotation.y, prim.rotation.w);
@@ -40,39 +56,26 @@ export class ObjectRenderer {
       return;
     }
 
-    // New prim — create full mesh with texture
-    const object = await this.createPrimitive(prim);
-    object.position.set(prim.position.x, prim.position.z, prim.position.y);
-    object.quaternion.set(prim.rotation.x, prim.rotation.z, prim.rotation.y, prim.rotation.w);
-    object.scale.set(prim.scale.x, prim.scale.z, prim.scale.y);
-    object.userData.primId = prim.id;
-    object.userData.primName = prim.name;
+    // New prim — create geometry IMMEDIATELY with default material
+    const geometry = this.createGeometry(prim);
+    const mesh = new THREE.Mesh(geometry, DEFAULT_MATERIAL.clone());
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
-    this.scene.add(object);
-    this.objects.set(prim.id, object);
-  }
+    const group = new THREE.Group();
+    group.add(mesh);
+    group.position.set(prim.position.x, prim.position.z, prim.position.y);
+    group.quaternion.set(prim.rotation.x, prim.rotation.z, prim.rotation.y, prim.rotation.w);
+    group.scale.set(prim.scale.x, prim.scale.z, prim.scale.y);
+    group.userData.primId = prim.id;
+    group.userData.primName = prim.name;
 
-  private async createPrimitive(prim: PrimData): Promise<THREE.Mesh> {
-    let geometry: THREE.BufferGeometry;
+    this.scene.add(group);
+    this.objects.set(prim.id, group);
 
-    switch (prim.primType) {
-      case 1: geometry = new THREE.BoxGeometry(1, 1, 1); break;
-      case 2: geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 24); break;
-      case 3: geometry = new THREE.ConeGeometry(0.5, 1, 3); break;
-      case 4: geometry = new THREE.SphereGeometry(0.5, 24, 16); break;
-      case 5: geometry = new THREE.TorusGeometry(0.35, 0.12, 16, 32); break;
-      case 6: geometry = new THREE.TorusGeometry(0.35, 0.12, 8, 24); break;
-      case 7: geometry = new THREE.TorusGeometry(0.35, 0.05, 8, 32); break;
-      case 8: geometry = new THREE.SphereGeometry(0.5, 16, 16); break;
-      case 9: geometry = await this.decodeMesh(prim.meshData); break;
-      default: geometry = new THREE.BoxGeometry(1, 1, 1);
-    }
-
-    // Load texture
-    let material: THREE.MeshStandardMaterial;
+    // Load texture in BACKGROUND (non-blocking!) — swap material when done
     const texId = prim.textureId || (prim.faces?.[0] as any)?.TextureId;
-
-    if (texId) {
+    if (texId && texId !== '00000000-0000-0000-0000-000000000000') {
       const face: SLTextureFace = {
         textureId: texId,
         repeatU: (prim.faces?.[0] as any)?.RepeatU ?? 1,
@@ -81,27 +84,52 @@ export class ObjectRenderer {
         offsetV: (prim.faces?.[0] as any)?.OffsetV ?? 0,
         rotation: (prim.faces?.[0] as any)?.Rotation ?? 0,
       };
-      material = await this.materialLoader.loadFromFace(face);
-    } else {
-      material = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7, metalness: 0.1 });
-    }
 
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    return mesh;
+      // Non-blocking texture load — fires and forgets
+      this.materialLoader.loadFromFace(face).then((material) => {
+        mesh.material = material;
+      }).catch(() => { /* texture failed, keep default */ });
+    }
   }
 
-  private async decodeMesh(meshData?: ArrayBuffer): Promise<THREE.BufferGeometry> {
-    if (!meshData || meshData.byteLength === 0) return new THREE.BoxGeometry(1, 1, 1);
+  /**
+   * Create geometry IMMEDIATELY — no async, no HTTP.
+   */
+  private createGeometry(prim: PrimData): THREE.BufferGeometry {
+    switch (prim.primType) {
+      case 1: return new THREE.BoxGeometry(1, 1, 1);         // Box
+      case 2: return new THREE.CylinderGeometry(0.5, 0.5, 1, 24); // Cylinder
+      case 3: return new THREE.ConeGeometry(0.5, 1, 3);      // Prism
+      case 4: return new THREE.SphereGeometry(0.5, 24, 16);   // Sphere
+      case 5: return new THREE.TorusGeometry(0.35, 0.12, 16, 32); // Torus
+      case 6: return new THREE.TorusGeometry(0.35, 0.12, 8, 24);  // Tube
+      case 7: return new THREE.TorusGeometry(0.35, 0.05, 8, 32);  // Ring
+      case 8: return new THREE.SphereGeometry(0.5, 16, 16);   // Sculpt (placeholder)
+      case 9: return new THREE.BoxGeometry(1, 1, 1);          // Mesh (placeholder — loaded async)
+      default: return new THREE.BoxGeometry(1, 1, 1);
+    }
+  }
+
+  /**
+   * Replace geometry on an existing mesh (called when mesh data arrives).
+   */
+  async replaceMeshGeometry(primId: string, meshData: ArrayBuffer): Promise<void> {
+    const group = this.objects.get(primId);
+    if (!group) return;
+
     try {
       const geometry = await this.meshDecoder.decode(meshData);
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
-      return geometry;
+
+      group.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          child.geometry = geometry;
+        }
+      });
     } catch (err) {
-      console.warn('[ObjectRenderer] Failed to decode SL mesh:', err);
-      return new THREE.BoxGeometry(1, 1, 1);
+      console.warn('[ObjectRenderer] Mesh decode failed:', err);
     }
   }
 
