@@ -183,11 +183,18 @@ public class ViewerHub : Hub
             catch { }
         };
 
-        // Send connected
+        // Send connected event
+        var regionName = client.Network.CurrentSim?.Name ?? "Unknown Region";
+        var regionHandle = client.Network.CurrentSim?.Handle ?? 0;
+        var regionX = (int)((regionHandle >> 32) & 0xFFFFFFFF);
+        var regionY = (int)(regionHandle & 0xFFFFFFFF);
         await caller.SendAsync("AvatarConnected", new
         {
             AvatarId = avatarId,
             FirstName = client.Self.Name ?? "Unknown",
+            RegionName = regionName,
+            RegionX = regionX,
+            RegionY = regionY,
             Position = new { X = client.Self.SimPosition.X, Y = client.Self.SimPosition.Y, Z = client.Self.SimPosition.Z }
         });
 

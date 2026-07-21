@@ -35,6 +35,7 @@ export class GridClient {
     private onFriendUpdate?: (id: string, name: string, online: boolean) => void,
     private onIM?: (from: string, message: string, fromId?: string) => void,
     private onTerrainPatch?: (x: number, y: number, heights: Float32Array) => void,
+    private onRegionConnected?: (regionName: string, regionX: number, regionY: number) => void,
   ) {
     this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
     this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
@@ -54,11 +55,12 @@ export class GridClient {
 
   private setupEventHandlers(hub: signalR.HubConnection): void {
     hub.on('AvatarConnected', (data: any) => {
-      console.log('[Grid] Connected as:', data.firstName);
+      console.log('[Grid] Connected as:', data.firstName, 'in', data.regionName);
       this._connected = true;
       this.camera.setTarget(
         new THREE.Vector3(data.position.x, data.position.z, data.position.y)
       );
+      this.onRegionConnected?.(data.regionName, data.regionX, data.regionY);
     });
 
     hub.on('ObjectUpdate', (data: any) => {

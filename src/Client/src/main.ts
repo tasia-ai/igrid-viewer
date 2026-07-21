@@ -248,7 +248,8 @@ connectBtn.addEventListener('click', async () => {
     undefined,
     (id, name, online) => { friends.set(id, { id, name, online }); renderFriends(); },
     (from, message, fromId) => { addIMMessage(from, message, fromId); },
-    (x, y, heights) => { minimap?.updatePatch(x, y, heights); }
+    (x, y, heights) => { minimap?.updatePatch(x, y, heights); },
+    (regionName, regionX, regionY) => { regionInfo.textContent = `☀ ${regionName} (${regionX}, ${regionY})`; }
   );
 
   try {
