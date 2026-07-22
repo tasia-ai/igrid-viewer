@@ -1,7 +1,7 @@
 # I-Grid Viewer — Plan rozwoju do pełnego Firestorm
 
 ## Status obecny
-✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API**
+✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping)**
 
 ## FAZA 1 — Świat żyje (wizualnie)
 
