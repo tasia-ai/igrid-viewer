@@ -84,6 +84,23 @@ public class ViewerHub : Hub
                         catch { }
                     }
                 }
+
+                // Sound — if the prim has a sound attached, send a separate sound update
+                if (prim.Sound != UUID.Zero)
+                {
+                    try
+                    {
+                        await caller.SendAsync("PrimSoundUpdate", new
+                        {
+                            ObjectId = prim.ID.ToString(),
+                            SoundId = prim.Sound.ToString(),
+                            Gain = prim.SoundGain,
+                            Radius = prim.SoundRadius,
+                            Flags = (int)prim.SoundFlags,
+                        });
+                    }
+                    catch { }
+                }
             }
             catch { }
         };
@@ -253,6 +270,39 @@ public class ViewerHub : Hub
 
         // Re-emit on region crossing
         client.Network.SimChanged += (_, _) => EmitEnvironmentUpdate();
+
+        // ── Sound / Audio ────────────────────────────────────────
+        // AttachedSound — prim/attachment starts playing a sound
+        client.Sound.AttachedSound += async (_, e) =>
+        {
+            try
+            {
+                await caller.SendAsync("AttachedSound", new
+                {
+                    SoundId = e.SoundID.ToString(),
+                    OwnerId = e.OwnerID.ToString(),
+                    ObjectID = e.ObjectID.ToString(),
+                    Gain = e.Gain,
+                    Flags = (int)e.Flags,
+                });
+            }
+            catch { }
+        };
+
+        // PreloadSound — server tells client to preload a sound asset
+        client.Sound.PreloadSound += async (_, e) =>
+        {
+            try
+            {
+                await caller.SendAsync("PreloadSound", new
+                {
+                    SoundId = e.SoundID.ToString(),
+                    OwnerId = e.OwnerID.ToString(),
+                    ObjectID = e.ObjectID.ToString(),
+                });
+            }
+            catch { }
+        };
 
         client.Self.MoneyBalance += async (_, e) =>
         { try { await caller.SendAsync("BalanceUpdate", new { Balance = e.Balance }); } catch { } };

@@ -7,6 +7,7 @@ import { ObjectRenderer } from '../engine/ObjectRenderer';
 import { AvatarRenderer } from '../engine/AvatarRenderer';
 import { PBRMaterialLoader } from '../engine/PBRMaterialLoader';
 import { type WindlightSettings } from '../engine/Environment';
+import { SoundManager } from '../engine/SoundManager';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -20,6 +21,7 @@ export class GridClient {
   private avatars: AvatarRenderer;
   public camera: CameraController;
   public materialLoader: PBRMaterialLoader;
+  public soundManager: SoundManager;
   private _connected = false;
 
   public get connected(): boolean {
@@ -47,6 +49,7 @@ export class GridClient {
     this.objects = new ObjectRenderer(sceneManager.scene, this.materialLoader);
     this.avatars = new AvatarRenderer(sceneManager.scene);
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
+    this.soundManager = new SoundManager(baseUrl, authToken);
 
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl('/hubs/viewer', {
@@ -159,6 +162,20 @@ export class GridClient {
       this.sceneManager.environment.applyWindlightSettings(data);
     });
 
+    hub.on('AttachedSound', (data: any) => {
+      // Position will come from the ObjectUpdate for this object
+      this.soundManager.playSound(data.soundId, { x: 0, y: 0, z: 0 }, data.gain, false);
+    });
+
+    hub.on('PreloadSound', (data: any) => {
+      // Preload the asset into the cache so it's ready when playback starts
+      this.soundManager.playSound(data.soundId, { x: 0, y: 0, z: 0 }, 1, false);
+    });
+
+    hub.on('PrimSoundUpdate', (data: any) => {
+      this.soundManager.playSound(data.soundId, { x: 0, y: 0, z: 0 }, data.gain, true);
+    });
+
     hub.on('Error', (message: string) => {
       console.error('[Grid] Error:', message);
     });
@@ -248,6 +265,7 @@ export class GridClient {
    * Disconnect from the server.
    */
   async stop(): Promise<void> {
+    this.soundManager.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
