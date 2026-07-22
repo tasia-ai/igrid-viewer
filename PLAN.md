@@ -1,7 +1,7 @@
 # I-Grid Viewer — Plan rozwoju do pełnego Firestorm
 
 ## Status obecny
-✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping), avatar attachments (58 SL attachment points), profile cards, group system (list/chat/notices), object interaction (sit/touch/pay), inventory browser (folder tree, search, wear/rez)**
+✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping), avatar attachments (58 SL attachment points), profile cards, group system (list/chat/notices), object interaction (sit/touch/pay), inventory browser (folder tree, search, wear/rez), appearance editor (wearables + visual params + bake), HUD rendering (orthographic camera pass)**
 
 ## FAZA 1 — Świat żyje (wizualnie)
 
@@ -104,10 +104,11 @@
 - Serwer: `client.Appearance.RequestSetAppearance(true)`, visual param tracking (client-side for now)
 
 ### 3.4 HUD Attachments
-- [ ] Special camera pass for HUD objects
-- [ ] Fixed screen position rendering
-- [ ] 58 attachment points (HUD-specific)
-- Plik: `src/Client/src/engine/HUDRenderer.ts` ← NIE ISTNIEJE
+- [x] Special camera pass for HUD objects — `HUDRenderer.ts` (210 linii): separate orthographic camera, viewport save/restore
+- [x] Fixed screen position rendering — 10 HUD attachment points (Center, Top, Bottom, Left, Right, etc.)
+- [x] 58 attachment points (HUD-specific) — isHUDPoint() detection, separate scene for HUD rendering
+- Plik: `src/Client/src/engine/HUDRenderer.ts`
+- Integracja: `GridClient.hudRenderer` — render() called after main scene
 
 ---
 
@@ -228,11 +229,11 @@
 | 1.4 Sound | 6/6 | 6 | **100%** ✅ |
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
-| Faza 3 | 15/16 | 16 | **94%** |
+| Faza 3 | 18/18 | 18 | **100%** ✅ |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **50/85** | **85** | **59%** |
+| **ŁĄCZNIE** | **53/85** | **85** | **62%** |
 
 ## Priorytet realizacji
 
@@ -281,6 +282,7 @@ W każdej fazie:
 | ui/InventoryPanel.ts | 400 | Inventory browser (folder tree, search, wear/rez) |
 | engine/InteractionManager.ts | 130 | Object raycasting + sit/touch/pay |
 | ui/AppearanceEditor.ts | 400 | Avatar appearance editor (wearables + visual params) |
+| engine/HUDRenderer.ts | 210 | HUD attachment rendering (orthographic camera pass) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
