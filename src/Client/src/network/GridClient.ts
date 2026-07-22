@@ -9,6 +9,7 @@ import { PBRMaterialLoader } from '../engine/PBRMaterialLoader';
 import { type WindlightSettings } from '../engine/Environment';
 import { SoundManager } from '../engine/SoundManager';
 import { ParticleSystemManager, type ParticleSystemData } from '../engine/ParticleSystem';
+import { FlexibleRenderer, type FlexibleData } from '../engine/FlexibleRenderer';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -24,6 +25,7 @@ export class GridClient {
   public materialLoader: PBRMaterialLoader;
   public soundManager: SoundManager;
   public particleManager: ParticleSystemManager;
+  public flexibleRenderer: FlexibleRenderer;
   private _connected = false;
 
   public get connected(): boolean {
@@ -53,6 +55,7 @@ export class GridClient {
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
     this.soundManager = new SoundManager(baseUrl, authToken);
     this.particleManager = new ParticleSystemManager(sceneManager.scene);
+    this.flexibleRenderer = new FlexibleRenderer(sceneManager.scene);
 
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl('/hubs/viewer', {
@@ -179,6 +182,35 @@ export class GridClient {
       this.soundManager.playSound(data.soundId, { x: 0, y: 0, z: 0 }, data.gain, true);
     });
 
+    hub.on('FlexibleUpdate', (data: any) => {
+      const flexData: FlexibleData = {
+        objectId: data.objectId,
+        softness: data.softness,
+        gravity: data.gravity,
+        drag: data.drag,
+        wind: data.wind,
+        tension: data.tension,
+        forceX: data.forceX,
+        forceY: data.forceY,
+        forceZ: data.forceZ,
+        segmentCount: data.segmentCount,
+        position: data.position,
+        rotation: data.rotation,
+        scale: data.scale,
+      };
+      // Get the object's group and mesh from ObjectRenderer
+      const obj = this.objects.getPrim(data.objectId);
+      if (obj) {
+        let mesh: THREE.Mesh | null = null;
+        obj.traverse((child) => {
+          if (child instanceof THREE.Mesh && !mesh) mesh = child;
+        });
+        if (mesh) {
+          this.flexibleRenderer.addFlexible(flexData, obj as THREE.Group, mesh);
+        }
+      }
+    });
+
     hub.on('ParticleSystemUpdate', (data: any) => {
       const particleData: ParticleSystemData = {
         objectId: data.objectId,
@@ -296,6 +328,7 @@ export class GridClient {
   async stop(): Promise<void> {
     this.soundManager.dispose();
     this.particleManager.clear();
+    this.flexibleRenderer.clear();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();

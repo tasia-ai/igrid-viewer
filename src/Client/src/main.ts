@@ -243,6 +243,7 @@ connectBtn.addEventListener('click', async () => {
     sceneManager.animate((delta) => {
       gridClient?.camera?.update(delta);
       gridClient?.particleManager?.update(delta);
+      gridClient?.flexibleRenderer?.update(delta);
     });
   } catch (err) { console.error('Connect failed:', err); }
 });
@@ -280,6 +281,7 @@ reconnectBtn.addEventListener('click', async () => {
     sceneManager.animate((delta) => {
       gridClient?.camera?.update(delta);
       gridClient?.particleManager?.update(delta);
+      gridClient?.flexibleRenderer?.update(delta);
     });
   } catch (err) {
     hidePreloader();

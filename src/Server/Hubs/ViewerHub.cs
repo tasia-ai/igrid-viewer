@@ -85,6 +85,32 @@ public class ViewerHub : Hub
                     }
                 }
 
+                // Flexible prims — if the prim has flexible data, send it for vertex displacement
+                var flex = prim.Flexible;
+                if (flex.Softness > 0 || flex.Gravity != 0 || flex.Drag > 0 || flex.Wind > 0 || flex.Tension > 0)
+                {
+                    try
+                    {
+                        await caller.SendAsync("FlexibleUpdate", new
+                        {
+                            ObjectId = prim.ID.ToString(),
+                            Softness = flex.Softness,
+                            Gravity = flex.Gravity,
+                            Drag = flex.Drag,
+                            Wind = flex.Wind,
+                            Tension = flex.Tension,
+                            ForceX = flex.Force.X,
+                            ForceY = flex.Force.Y,
+                            ForceZ = flex.Force.Z,
+                            SegmentCount = Math.Max(2, (int)(prim.PrimData.PathRevolutions * 4) + 2),
+                            Position = new { X = prim.Position.X, Y = prim.Position.Y, Z = prim.Position.Z },
+                            Rotation = new { X = prim.Rotation.X, Y = prim.Rotation.Y, Z = prim.Rotation.Z, W = prim.Rotation.W },
+                            Scale = new { X = prim.Scale.X, Y = prim.Scale.Y, Z = prim.Scale.Z },
+                        });
+                    }
+                    catch { }
+                }
+
                 // Particle system — if the prim has particles, send particle data
                 if (prim.ParticleSys.BurstRate > 0)
                 {
