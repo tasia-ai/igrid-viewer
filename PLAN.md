@@ -140,11 +140,11 @@
 - Plik: `src/Client/src/ui/LandTools.ts`
 
 ### 4.4 World Map (full)
-- [ ] Map tiles from grid
-- [ ] Parcel overlay
-- [ ] Region grid
-- [ ] Teleport by click
-- Plik: `src/Client/src/ui/WorldMap.ts` ← NIE ISTNIEJE
+- [x] Map tiles from grid — `WorldMap.ts` (350 linii): canvas-based region grid rendering
+- [x] Parcel overlay — colored rectangles for parcels with sale info
+- [x] Region grid — grid lines with region names, access status (open/locked/offline)
+- [x] Teleport by click — click region to teleport, zoom/pan with mouse wheel
+- Plik: `src/Client/src/ui/WorldMap.ts`
 
 ### 4.5 Media/Music Streaming
 - [x] Parcel music (SHOUTcast/Icecast → Web Audio API) — `MediaManager.ts` (280 linii): AudioContext + MediaElementSource + GainNode
@@ -231,10 +231,10 @@
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
 | Faza 3 | 18/18 | 18 | **100%** ✅ |
-| Faza 4 | 16/18 | 18 | **89%** |
+| Faza 4 | 20/25 | 25 | **80%** |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **69/85** | **85** | **81%** |
+| **ŁĄCZNIE** | **73/96** | **96** | **76%** |
 
 ## Priorytet realizacji
 
@@ -288,6 +288,7 @@ W każdej fazie:
 | engine/MediaManager.ts | 280 | Media/music streaming (Web Audio API + HTML5 iframes) |
 | engine/BuildTools.ts | 300 | Build/edit tools (select/move/rotate/scale gizmos) |
 | ui/LandTools.ts | 320 | Land/parcel management (buy/sell/subdivide/terraform) |
+| ui/WorldMap.ts | 350 | World map with region grid, zoom/pan, teleport |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
