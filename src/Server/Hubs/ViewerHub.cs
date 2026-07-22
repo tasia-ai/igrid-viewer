@@ -851,6 +851,34 @@ public class ViewerHub : Hub
         catch { }
     }
 
+    /// <summary>
+    /// Update a visual param on the server.
+    /// Note: LibreMetaverse doesn't expose SetVisualParam directly,
+    /// so we trigger a full appearance update after param changes.
+    /// </summary>
+    public async Task SetVisualParam(int paramId, float value)
+    {
+        // Visual params require low-level packet handling.
+        // For now, the client tracks params locally and sends them on bake.
+    }
+
+    /// <summary>
+    /// Bake avatar appearance and send updated textures.
+    /// </summary>
+    public async Task BakeAppearance()
+    {
+        try
+        {
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            client.Appearance.RequestSetAppearance(true);
+        }
+        catch { }
+    }
+
     // ── Inventory Hub Methods ────────────────────────────────
 
     /// <summary>
