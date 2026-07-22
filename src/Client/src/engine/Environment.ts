@@ -1,9 +1,122 @@
 import * as THREE from 'three';
 
 /**
+ * Sky / environment preset definition.
+ * Every field is explicit so setPreset can apply the whole look at once.
+ */
+export interface SkyPreset {
+  name: string;
+  topColor: THREE.Color;
+  midColor: THREE.Color;
+  bottomColor: THREE.Color;
+  sunDirection: THREE.Vector3;
+  sunIntensity: number;
+  sunColor: THREE.Color;
+  fogColor: THREE.Color;
+  fogNear: number;
+  fogFar: number;
+  ambientIntensity: number;
+  ambientColor: THREE.Color;
+  hemiSkyColor: THREE.Color;
+  hemiGroundColor: THREE.Color;
+  hemiIntensity: number;
+  waterColor: THREE.Color;
+  waterOpacity: number;
+  timeOfDay: number;
+}
+
+/** Pre-defined sky presets keyed by lowercase name. */
+const SKY_PRESETS: Record<string, SkyPreset> = {
+  day: {
+    name: 'Day',
+    topColor: new THREE.Color(0x0077ff),
+    midColor: new THREE.Color(0x87ceeb),
+    bottomColor: new THREE.Color(0xffffff),
+    sunDirection: new THREE.Vector3(0.5, 0.9, 0.5).normalize(),
+    sunIntensity: 1.5,
+    sunColor: new THREE.Color(0xfff4e0),
+    fogColor: new THREE.Color(0x87ceeb),
+    fogNear: 200,
+    fogFar: 1500,
+    ambientIntensity: 0.8,
+    ambientColor: new THREE.Color(0x606080),
+    hemiSkyColor: new THREE.Color(0x87ceeb),
+    hemiGroundColor: new THREE.Color(0x362907),
+    hemiIntensity: 0.4,
+    waterColor: new THREE.Color(0x006994),
+    waterOpacity: 0.65,
+    timeOfDay: 0.5,
+  },
+
+  sunset: {
+    name: 'Sunset',
+    topColor: new THREE.Color(0x2a1a4e),
+    midColor: new THREE.Color(0xcc5533),
+    bottomColor: new THREE.Color(0xff7722),
+    sunDirection: new THREE.Vector3(0.8, 0.15, 0.3).normalize(),
+    sunIntensity: 0.8,
+    sunColor: new THREE.Color(0xff6622),
+    fogColor: new THREE.Color(0xcc6633),
+    fogNear: 150,
+    fogFar: 1200,
+    ambientIntensity: 0.35,
+    ambientColor: new THREE.Color(0x884422),
+    hemiSkyColor: new THREE.Color(0xcc6644),
+    hemiGroundColor: new THREE.Color(0x2a1508),
+    hemiIntensity: 0.35,
+    waterColor: new THREE.Color(0x663322),
+    waterOpacity: 0.7,
+    timeOfDay: 0.2,
+  },
+
+  night: {
+    name: 'Night',
+    topColor: new THREE.Color(0x050510),
+    midColor: new THREE.Color(0x0a0a2e),
+    bottomColor: new THREE.Color(0x111133),
+    sunDirection: new THREE.Vector3(0.3, 0.8, 0.5).normalize(),
+    sunIntensity: 0.04,
+    sunColor: new THREE.Color(0xaabbdd),
+    fogColor: new THREE.Color(0x080820),
+    fogNear: 100,
+    fogFar: 800,
+    ambientIntensity: 0.12,
+    ambientColor: new THREE.Color(0x222244),
+    hemiSkyColor: new THREE.Color(0x0a0a2e),
+    hemiGroundColor: new THREE.Color(0x000000),
+    hemiIntensity: 0.15,
+    waterColor: new THREE.Color(0x060618),
+    waterOpacity: 0.8,
+    timeOfDay: 0.0,
+  },
+
+  mars: {
+    name: 'Mars',
+    topColor: new THREE.Color(0x6b2a1a),
+    midColor: new THREE.Color(0xcc5533),
+    bottomColor: new THREE.Color(0xdd6633),
+    sunDirection: new THREE.Vector3(0.6, 0.35, 0.4).normalize(),
+    sunIntensity: 0.7,
+    sunColor: new THREE.Color(0xff4422),
+    fogColor: new THREE.Color(0x884433),
+    fogNear: 120,
+    fogFar: 900,
+    ambientIntensity: 0.3,
+    ambientColor: new THREE.Color(0x663322),
+    hemiSkyColor: new THREE.Color(0x994433),
+    hemiGroundColor: new THREE.Color(0x331108),
+    hemiIntensity: 0.3,
+    waterColor: new THREE.Color(0x552211),
+    waterOpacity: 0.75,
+    timeOfDay: 0.3,
+  },
+};
+
+/**
  * Environment system for I-Grid viewer.
  * Sky gradient shader, day/night cycle, PBR water, fog.
  * Enhanced with sun disc, sun glow/halo, and horizon glow.
+ * Supports sky presets for quick environment switching.
  */
 export class Environment {
   public scene: THREE.Scene;
@@ -13,6 +126,7 @@ export class Environment {
   private water: THREE.Mesh;
   private skyDome: THREE.Mesh;
   private timeOfDay = 0.5;
+  private currentPreset: string = 'day';
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -122,6 +236,77 @@ export class Environment {
     this.setTimeOfDay(0.5);
   }
 
+  // ── Preset API ──────────────────────────────────────────────
+
+  /** Return the list of available preset key names (in display order). */
+  getPresetNames(): string[] {
+    return Object.keys(SKY_PRESETS);
+  }
+
+  /** Return the current preset key, or 'day' if using setTimeOfDay directly. */
+  getCurrentPreset(): string {
+    return this.currentPreset;
+  }
+
+  /**
+   * Apply a sky preset by key name.
+   * Sets all environment parameters at once (sky colours, sun, fog, water, lights).
+   * After this call, setTimeOfDay can still be used to override values.
+   */
+  setPreset(name: string): void {
+    const key = name.toLowerCase();
+    const preset = SKY_PRESETS[key];
+    if (!preset) {
+      console.warn(`[Environment] Unknown preset: "${name}". Available: ${Object.keys(SKY_PRESETS).join(', ')}`);
+      return;
+    }
+    this.currentPreset = key;
+
+    // --- Sky shader uniforms ---
+    const skyMat = this.skyDome.material as THREE.ShaderMaterial;
+    skyMat.uniforms.topColor.value.copy(preset.topColor);
+    skyMat.uniforms.midColor.value.copy(preset.midColor);
+    skyMat.uniforms.bottomColor.value.copy(preset.bottomColor);
+    skyMat.uniforms.sunDirection.value.copy(preset.sunDirection);
+    skyMat.uniforms.sunIntensity.value = preset.sunIntensity;
+
+    // --- Directional (sun/moon) light ---
+    const sunY = preset.sunDirection.y * 300;
+    const sunZ = preset.sunDirection.z * 300;
+    this.sunLight.position.set(preset.sunDirection.x * 300, sunY, sunZ);
+    this.sunLight.color.copy(preset.sunColor);
+    this.sunLight.intensity = preset.sunIntensity;
+
+    // --- Ambient light ---
+    this.ambientLight.color.copy(preset.ambientColor);
+    this.ambientLight.intensity = preset.ambientIntensity;
+
+    // --- Hemisphere light ---
+    this.hemiLight.color.copy(preset.hemiSkyColor);
+    this.hemiLight.groundColor.copy(preset.hemiGroundColor);
+    this.hemiLight.intensity = preset.hemiIntensity;
+
+    // --- Fog ---
+    if (this.scene.fog) {
+      (this.scene.fog as THREE.Fog).color.copy(preset.fogColor);
+      (this.scene.fog as THREE.Fog).near = preset.fogNear;
+      (this.scene.fog as THREE.Fog).far = preset.fogFar;
+    }
+
+    // --- Scene background (matches sky zenith) ---
+    this.scene.background = preset.topColor.clone();
+
+    // --- Water ---
+    const waterMat = this.water.material as THREE.MeshStandardMaterial;
+    waterMat.color.copy(preset.waterColor);
+    waterMat.opacity = preset.waterOpacity;
+
+    // Store the time-of-day so setTimeOfDay can still pick up later
+    this.timeOfDay = preset.timeOfDay;
+  }
+
+  // ── Original API (unchanged signature) ──────────────────────
+
   setTimeOfDay(t: number) {
     this.timeOfDay = Math.max(0, Math.min(1, t));
     const angle = this.timeOfDay * Math.PI;
@@ -163,6 +348,9 @@ export class Environment {
 
     // Water color
     (this.water.material as THREE.MeshStandardMaterial).color.setHSL(0.55, 0.6, 0.15 + Math.sin(angle) * 0.2);
+
+    // Mark that we are no longer on a named preset
+    this.currentPreset = '';
   }
 
   update(_delta: number) {

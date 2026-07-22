@@ -34,6 +34,7 @@ const teleportBar = document.getElementById('teleport-bar')!;
 const teleportForm = document.getElementById('teleport-form') as HTMLFormElement;
 const teleportInput = document.getElementById('teleport-input') as HTMLInputElement;
 const zoomSlider = document.getElementById('zoom-slider') as HTMLInputElement;
+const skyPresetSelect = document.getElementById('sky-preset') as HTMLSelectElement;
 
 // === STATE ===
 let authToken = '';
@@ -183,6 +184,13 @@ drawDistSlider?.addEventListener('input', () => {
   }
 });
 zoomSlider.addEventListener('input', () => { gridClient?.camera?.setZoom(Number(zoomSlider.value)); });
+
+// Sky preset selector
+skyPresetSelect.addEventListener('change', () => {
+  if (sceneManager) {
+    sceneManager.environment.setPreset(skyPresetSelect.value);
+  }
+});
 
 // === SHOW/HIDE WORLD UI ===
 function showWorldUI() {
