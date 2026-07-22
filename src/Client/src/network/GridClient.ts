@@ -26,6 +26,10 @@ import { WorldMap } from '../ui/WorldMap';
 import { NotecardEditor } from '../ui/NotecardEditor';
 import { SnapshotTools, type SnapshotOptions } from '../ui/SnapshotTools';
 import { ChatMedia } from '../ui/ChatMedia';
+import { ScriptEditor, type CompileResult } from '../ui/ScriptEditor';
+import { UploadTools } from '../ui/UploadTools';
+import { VoiceChat } from '../engine/VoiceChat';
+import { EditWindow, type ObjectEditData } from '../engine/BuildTools';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -58,6 +62,10 @@ export class GridClient {
   public notecardEditor: NotecardEditor;
   public snapshotTools: SnapshotTools;
   public chatMedia: ChatMedia;
+  public scriptEditor: ScriptEditor;
+  public uploadTools: UploadTools;
+  public voiceChat: VoiceChat;
+  public editWindow: EditWindow;
   private _connected = false;
 
   public get connected(): boolean {
@@ -118,6 +126,19 @@ export class GridClient {
       onCapture: (imageData, options) => this.handleSnapshot(imageData, options),
     });
     this.chatMedia = new ChatMedia();
+    this.scriptEditor = new ScriptEditor({
+      onSave: (id, content, mono) => this.connection?.invoke('UpdateScript', id, content, mono),
+      onCompile: (id, content) => this.connection?.invoke('UpdateScript', id, content, true),
+    });
+    this.uploadTools = new UploadTools({
+      onUpload: (data) => this.connection?.invoke('UploadAsset', data.type, data.name, data.description || ''),
+    });
+    this.voiceChat = new VoiceChat({
+      onToggle: (enabled) => console.log('[Voice]', enabled ? 'enabled' : 'disabled'),
+    });
+    this.editWindow = new EditWindow({
+      onChange: (objectId, prop, value) => this.connection?.invoke('SetObjectProperty', objectId, prop, value),
+    });
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
       this.handleInteraction(result, type);
@@ -619,6 +640,10 @@ export class GridClient {
     this.notecardEditor.dispose();
     this.snapshotTools.dispose();
     this.chatMedia.dispose();
+    this.scriptEditor.dispose();
+    this.uploadTools.dispose();
+    this.voiceChat.dispose();
+    this.editWindow.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();

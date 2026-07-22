@@ -879,6 +879,59 @@ public class ViewerHub : Hub
         catch { }
     }
 
+    // ── Script Hub Methods ──────────────────────────────────
+
+    /// <summary>
+    /// Update/upload a script.
+    /// </summary>
+    public async Task UpdateScript(string itemID, string scriptBody, bool mono)
+    {
+        var session = _grid.GetUserSessions(UserId).FirstOrDefault();
+        if (session == null) return;
+        try
+        {
+            var id = OpenMetaverse.UUID.Parse(itemID);
+            var data = System.Text.Encoding.UTF8.GetBytes(scriptBody);
+            var caller = Clients.Caller;
+            session.Client.Inventory.RequestUpdateScriptAgentInventory(data, id, mono,
+                (uploadSuccess, status, compileSuccess, messages, itemID2, assetID) =>
+                {
+                    var compileMessages = new List<string>();
+                    if (messages != null) compileMessages.AddRange(messages);
+                    caller.SendAsync("ScriptCompileResult", new
+                    {
+                        UploadSuccess = uploadSuccess,
+                        Status = status,
+                        CompileSuccess = compileSuccess,
+                        Messages = compileMessages,
+                        ItemID = itemID2.ToString(),
+                        AssetID = assetID.ToString(),
+                    }).Wait();
+                });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UpdateScript error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Set script running state.
+    /// </summary>
+    public void SetScriptRunning(string objectID, string scriptID, bool running)
+    {
+        var session = _grid.GetUserSessions(UserId).FirstOrDefault();
+        if (session == null) return;
+        try
+        {
+            session.Client.Inventory.RequestSetScriptRunning(
+                OpenMetaverse.UUID.Parse(objectID),
+                OpenMetaverse.UUID.Parse(scriptID),
+                running);
+        }
+        catch { }
+    }
+
     // ── Search Hub Methods ────────────────────────────────────
 
     /// <summary>
