@@ -85,6 +85,37 @@ public class ViewerHub : Hub
                     }
                 }
 
+                // Particle system — if the prim has particles, send particle data
+                if (prim.ParticleSys.BurstRate > 0)
+                {
+                    try
+                    {
+                        var ps = prim.ParticleSys;
+
+                        await caller.SendAsync("ParticleSystemUpdate", new
+                        {
+                            ObjectId = prim.ID.ToString(),
+                            TextureId = ps.Texture != UUID.Zero ? ps.Texture.ToString() : null,
+                            BurstSphereRate = ps.BurstRate,
+                            BurstSphereRadius = ps.BurstRadius,
+                            MaxAge = ps.MaxAge,
+                            Lifetime = ps.PartMaxAge,
+                            LifetimeVariance = 0f,
+                            InitialSpeed = ps.BurstSpeedMin,
+                            FinalSpeed = ps.BurstSpeedMax,
+                            InitialAcceleration = ps.PartAcceleration.X,
+                            FinalAcceleration = ps.PartAcceleration.Z,
+                            InitialSize = ps.PartStartScaleX,
+                            FinalSize = ps.PartEndScaleX,
+                            StartColor = new { R = ps.PartStartColor.R, G = ps.PartStartColor.G, B = ps.PartStartColor.B, A = ps.PartStartColor.A },
+                            EndColor = new { R = ps.PartEndColor.R, G = ps.PartEndColor.G, B = ps.PartEndColor.B, A = ps.PartEndColor.A },
+                            Pattern = (int)ps.Pattern,
+                            Flags = (int)ps.PartFlags,
+                        });
+                    }
+                    catch { }
+                }
+
                 // Sound — if the prim has a sound attached, send a separate sound update
                 if (prim.Sound != UUID.Zero)
                 {

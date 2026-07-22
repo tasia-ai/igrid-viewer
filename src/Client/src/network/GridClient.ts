@@ -8,6 +8,7 @@ import { AvatarRenderer } from '../engine/AvatarRenderer';
 import { PBRMaterialLoader } from '../engine/PBRMaterialLoader';
 import { type WindlightSettings } from '../engine/Environment';
 import { SoundManager } from '../engine/SoundManager';
+import { ParticleSystemManager, type ParticleSystemData } from '../engine/ParticleSystem';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -22,6 +23,7 @@ export class GridClient {
   public camera: CameraController;
   public materialLoader: PBRMaterialLoader;
   public soundManager: SoundManager;
+  public particleManager: ParticleSystemManager;
   private _connected = false;
 
   public get connected(): boolean {
@@ -50,6 +52,7 @@ export class GridClient {
     this.avatars = new AvatarRenderer(sceneManager.scene);
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
     this.soundManager = new SoundManager(baseUrl, authToken);
+    this.particleManager = new ParticleSystemManager(sceneManager.scene);
 
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl('/hubs/viewer', {
@@ -176,6 +179,32 @@ export class GridClient {
       this.soundManager.playSound(data.soundId, { x: 0, y: 0, z: 0 }, data.gain, true);
     });
 
+    hub.on('ParticleSystemUpdate', (data: any) => {
+      const particleData: ParticleSystemData = {
+        objectId: data.objectId,
+        textureId: data.textureId,
+        burstSphereRate: data.burstSphereRate,
+        burstSphereRadius: data.burstSphereRadius,
+        maxAge: data.maxAge,
+        lifetime: data.lifetime,
+        lifetimeVariance: data.lifetimeVariance,
+        initialSpeed: data.initialSpeed,
+        finalSpeed: data.finalSpeed,
+        initialAcceleration: data.initialAcceleration,
+        finalAcceleration: data.finalAcceleration,
+        initialSize: data.initialSize,
+        finalSize: data.finalSize,
+        startColor: { r: data.startColor.r, g: data.startColor.g, b: data.startColor.b, a: data.startColor.a },
+        endColor: { r: data.endColor.r, g: data.endColor.g, b: data.endColor.b, a: data.endColor.a },
+        pattern: data.pattern,
+        flags: data.flags,
+      };
+      // Get the object's position from the ObjectRenderer if available
+      const obj = this.objects.getPrim(data.objectId);
+      const pos = obj?.position;
+      this.particleManager.updateSystem(particleData, pos);
+    });
+
     hub.on('Error', (message: string) => {
       console.error('[Grid] Error:', message);
     });
@@ -266,6 +295,7 @@ export class GridClient {
    */
   async stop(): Promise<void> {
     this.soundManager.dispose();
+    this.particleManager.clear();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();

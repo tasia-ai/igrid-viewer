@@ -240,7 +240,10 @@ connectBtn.addEventListener('click', async () => {
     await gridClient.connectAvatar(selectedAvatarId);
     hidePreloader();
     showWorldUI();
-    sceneManager.animate((delta) => gridClient?.camera?.update(delta));
+    sceneManager.animate((delta) => {
+      gridClient?.camera?.update(delta);
+      gridClient?.particleManager?.update(delta);
+    });
   } catch (err) { console.error('Connect failed:', err); }
 });
 
@@ -274,7 +277,10 @@ reconnectBtn.addEventListener('click', async () => {
     await gridClient.connectAvatar(selectedAvatarId);
     hidePreloader();
     showWorldUI();
-    sceneManager.animate((delta) => gridClient?.camera?.update(delta));
+    sceneManager.animate((delta) => {
+      gridClient?.camera?.update(delta);
+      gridClient?.particleManager?.update(delta);
+    });
   } catch (err) {
     hidePreloader();
     console.error('Reconnect failed:', err);
