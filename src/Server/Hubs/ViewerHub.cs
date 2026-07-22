@@ -879,6 +879,233 @@ public class ViewerHub : Hub
         catch { }
     }
 
+    // ── Search Hub Methods ────────────────────────────────────
+
+    /// <summary>
+    /// Search for people by name.
+    /// </summary>
+    public async Task SearchPeople(string query)
+    {
+        var caller = Clients.Caller;
+        try
+        {
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            var results = new List<object>();
+            var received = new ManualResetEventSlim(false);
+
+            void OnPeopleReply(object? s, DirPeopleReplyEventArgs e)
+            {
+                try
+                {
+                    foreach (var person in e.MatchedPeople)
+                    {
+                        results.Add(new
+                        {
+                            Id = person.AgentID.ToString(),
+                            Name = $"{person.FirstName} {person.LastName}",
+                            Online = person.Online,
+                            Category = "people",
+                        });
+                    }
+                }
+                catch { }
+                received.Set();
+            }
+
+            client.Directory.DirPeopleReply += OnPeopleReply;
+            client.Directory.StartPeopleSearch(query, 0);
+            received.Wait(5000);
+            client.Directory.DirPeopleReply -= OnPeopleReply;
+
+            await caller.SendAsync("SearchResults", new { Category = "people", Results = results });
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Search for places.
+    /// </summary>
+    public async Task SearchPlaces(string query)
+    {
+        var caller = Clients.Caller;
+        try
+        {
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            var results = new List<object>();
+            var received = new ManualResetEventSlim(false);
+
+            void OnPlacesReply(object? s, DirPlacesReplyEventArgs e)
+            {
+                try
+                {
+                    foreach (var place in e.MatchedParcels)
+                    {
+                        results.Add(new
+                        {
+                            Id = place.ID.ToString(),
+                            Name = place.Name,
+                            Price = place.SalePrice,
+                            Category = "places",
+                        });
+                    }
+                }
+                catch { }
+                received.Set();
+            }
+
+            client.Directory.DirPlacesReply += OnPlacesReply;
+            client.Directory.StartDirPlacesSearch(query, 0);
+            received.Wait(5000);
+            client.Directory.DirPlacesReply -= OnPlacesReply;
+
+            await caller.SendAsync("SearchResults", new { Category = "places", Results = results });
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Search for events.
+    /// </summary>
+    public async Task SearchEvents(string query)
+    {
+        var caller = Clients.Caller;
+        try
+        {
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            var results = new List<object>();
+            var received = new ManualResetEventSlim(false);
+
+            void OnEventsReply(object? s, DirEventsReplyEventArgs e)
+            {
+                try
+                {
+                    foreach (var evt in e.MatchedEvents)
+                    {
+                        results.Add(new
+                        {
+                            Id = evt.ID.ToString(),
+                            Name = evt.Name,
+                            Date = evt.Date,
+                            Category = "events",
+                        });
+                    }
+                }
+                catch { }
+                received.Set();
+            }
+
+            client.Directory.DirEventsReply += OnEventsReply;
+            client.Directory.StartEventsSearch(query, 0);
+            received.Wait(5000);
+            client.Directory.DirEventsReply -= OnEventsReply;
+
+            await caller.SendAsync("SearchResults", new { Category = "events", Results = results });
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Search for groups.
+    /// </summary>
+    public async Task SearchGroups(string query)
+    {
+        var caller = Clients.Caller;
+        try
+        {
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            var results = new List<object>();
+            var received = new ManualResetEventSlim(false);
+
+            void OnGroupsReply(object? s, DirGroupsReplyEventArgs e)
+            {
+                try
+                {
+                    foreach (var group in e.MatchedGroups)
+                    {
+                        results.Add(new
+                        {
+                            Id = group.GroupID.ToString(),
+                            Name = group.GroupName,
+                            Description = $"{group.Members} members",
+                            Category = "groups",
+                        });
+                    }
+                }
+                catch { }
+                received.Set();
+            }
+
+            client.Directory.DirGroupsReply += OnGroupsReply;
+            client.Directory.StartGroupSearch(query, 0);
+            received.Wait(5000);
+            client.Directory.DirGroupsReply -= OnGroupsReply;
+
+            await caller.SendAsync("SearchResults", new { Category = "groups", Results = results });
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Search for classifieds.
+    /// </summary>
+    public async Task SearchClassifieds(string query)
+    {
+        var caller = Clients.Caller;
+        try
+        {
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            var results = new List<object>();
+            var received = new ManualResetEventSlim(false);
+
+            void OnClassifiedsReply(object? s, DirClassifiedsReplyEventArgs e)
+            {
+                try
+                {
+                    foreach (var classified in e.Classifieds)
+                    {
+                        results.Add(new
+                        {
+                            Id = classified.ID.ToString(),
+                            Name = classified.Name,
+                            Price = classified.Price,
+                            Category = "classifieds",
+                        });
+                    }
+                }
+                catch { }
+                received.Set();
+            }
+
+            client.Directory.DirClassifiedsReply += OnClassifiedsReply;
+            client.Directory.StartClassifiedSearch(query);
+            received.Wait(5000);
+            client.Directory.DirClassifiedsReply -= OnClassifiedsReply;
+
+            await caller.SendAsync("SearchResults", new { Category = "classifieds", Results = results });
+        }
+        catch { }
+    }
+
     // ── Inventory Hub Methods ────────────────────────────────
 
     /// <summary>

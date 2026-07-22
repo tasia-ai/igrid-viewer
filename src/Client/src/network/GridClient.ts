@@ -18,6 +18,7 @@ import { InteractionManager, type InteractionResult, type InteractionType } from
 import { InventoryPanel, type InventoryFolder, type InventoryItem, type InventoryAction } from '../ui/InventoryPanel';
 import { AppearanceEditor } from '../ui/AppearanceEditor';
 import { HUDRenderer } from '../engine/HUDRenderer';
+import { SearchPanel, type SearchCategory, type SearchResult } from '../ui/SearchPanel';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -42,6 +43,7 @@ export class GridClient {
   public inventoryPanel: InventoryPanel;
   public appearanceEditor: AppearanceEditor;
   public hudRenderer: HUDRenderer;
+  public searchPanel: SearchPanel;
   private _connected = false;
 
   public get connected(): boolean {
@@ -80,6 +82,10 @@ export class GridClient {
       onBake: () => this.connection?.invoke('BakeAppearance'),
     });
     this.hudRenderer = new HUDRenderer(sceneManager.scene, sceneManager.renderer);
+    this.searchPanel = new SearchPanel({
+      onSearch: (category, query) => this.handleSearch(category, query),
+      onResultClick: (result) => this.handleSearchResultClick(result),
+    });
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
       this.handleInteraction(result, type);
@@ -295,6 +301,21 @@ export class GridClient {
       this.inventoryPanel.expandFolder(data.folderId, data.folders, data.items);
     });
 
+    hub.on('SearchResults', (data: any) => {
+      const results: SearchResult[] = data.results.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        category: data.category,
+        online: r.online,
+        distance: r.distance,
+        price: r.price,
+        date: r.date,
+        maturity: r.maturity,
+      }));
+      this.searchPanel.setResults(results);
+    });
+
     hub.on('FlexibleUpdate', (data: any) => {
       const flexData: FlexibleData = {
         objectId: data.objectId,
@@ -444,6 +465,30 @@ export class GridClient {
   }
 
   /**
+   * Handle search requests from the SearchPanel.
+   */
+  private handleSearch(category: SearchCategory, query: string): void {
+    if (!this.connection) return;
+    switch (category) {
+      case 'people': this.connection.invoke('SearchPeople', query); break;
+      case 'places': this.connection.invoke('SearchPlaces', query); break;
+      case 'events': this.connection.invoke('SearchEvents', query); break;
+      case 'groups': this.connection.invoke('SearchGroups', query); break;
+      case 'classifieds': this.connection.invoke('SearchClassifieds', query); break;
+    }
+  }
+
+  /**
+   * Handle search result clicks (e.g., teleport to place, view profile).
+   */
+  private handleSearchResultClick(result: SearchResult): void {
+    if (!this.connection) return;
+    if (result.category === 'people') {
+      this.connection.invoke('RequestProfile', result.id);
+    }
+  }
+
+  /**
    * Handle inventory actions (wear/rez/take/delete).
    */
   private handleInventoryAction(action: InventoryAction, target: any): void {
@@ -515,6 +560,7 @@ export class GridClient {
     this.inventoryPanel.dispose();
     this.appearanceEditor.dispose();
     this.hudRenderer.dispose();
+    this.searchPanel.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
