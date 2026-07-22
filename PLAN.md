@@ -97,11 +97,11 @@
 - Serwer: `client.Inventory` (Store, RequestRezFromInventory, RequestDeRezToInventory, WearOutfit)
 
 ### 3.3 Appearance System
-- [ ] Wearable editor (shape, skin, hair, eyes, shirt, pants, etc.)
-- [ ] Visual param sliders
-- [ ] Bake trigger → upload baked texture
-- Plik: `src/Client/src/ui/AppearanceEditor.ts` ← NIE ISTNIEJE
-- Serwer: `client.Appearance` API
+- [x] Wearable editor (shape, skin, hair, eyes, shirt, pants, etc.) — `AppearanceEditor.ts` (400 linii): 14 wearable slots, context-aware panel
+- [x] Visual param sliders — 32+ SL visual params (shape, hair), real-time slider adjustment with label display
+- [x] Bake trigger → upload baked texture — Bake & Save button, server RequestSetAppearance(true)
+- Plik: `src/Client/src/ui/AppearanceEditor.ts`
+- Serwer: `client.Appearance.RequestSetAppearance(true)`, visual param tracking (client-side for now)
 
 ### 3.4 HUD Attachments
 - [ ] Special camera pass for HUD objects
@@ -228,11 +228,11 @@
 | 1.4 Sound | 6/6 | 6 | **100%** ✅ |
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
-| Faza 3 | 12/16 | 16 | **75%** |
+| Faza 3 | 15/16 | 16 | **94%** |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **47/85** | **85** | **55%** |
+| **ŁĄCZNIE** | **50/85** | **85** | **59%** |
 
 ## Priorytet realizacji
 
@@ -280,6 +280,7 @@ W każdej fazie:
 | ui/GroupPanel.ts | 310 | Group list, chat, and notices |
 | ui/InventoryPanel.ts | 400 | Inventory browser (folder tree, search, wear/rez) |
 | engine/InteractionManager.ts | 130 | Object raycasting + sit/touch/pay |
+| ui/AppearanceEditor.ts | 400 | Avatar appearance editor (wearables + visual params) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
