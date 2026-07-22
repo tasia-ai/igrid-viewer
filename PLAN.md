@@ -1,7 +1,7 @@
 # I-Grid Viewer — Plan rozwoju do pełnego Firestorm
 
 ## Status obecny
-✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping), avatar attachments (58 SL attachment points), profile cards, group system (list/chat/notices)**
+✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping), avatar attachments (58 SL attachment points), profile cards, group system (list/chat/notices), object interaction (sit/touch/pay), inventory browser (folder tree, search, wear/rez)**
 
 ## FAZA 1 — Świat żyje (wizualnie)
 
@@ -87,14 +87,14 @@
 - Serwer: `client.Self.RequestSit()`, `client.Self.Touch()`
 
 ### 3.2 Inventory System
-- [ ] Folder tree (browse categories)
-- [ ] Drag-drop wear (add clothing)
-- [ ] Rez objects from inventory
-- [ ] Take/drop objects
-- [ ] Search inventory
-- [ ] Notecards, landmarks, scripts
-- Plik: `src/Client/src/ui/InventoryPanel.ts` ← NIE ISTNIEJE
-- Serwer: `client.Inventory` full API
+- [x] Folder tree (browse categories) — `InventoryPanel.ts` (400 linii): folder tree with icons, expand/collapse, search
+- [x] Drag-drop wear (add clothing) — context menu with Wear option, server WearItem hub method
+- [x] Rez objects from inventory — double-click to rez, server RezObject hub method
+- [x] Take/drop objects — server TakeObject hub method (DeRezToInventory)
+- [x] Search inventory — search bar filters items by name in real-time
+- [x] Notecards, landmarks, scripts — folder icons for all asset types, item type display
+- Plik: `src/Client/src/ui/InventoryPanel.ts`
+- Serwer: `client.Inventory` (Store, RequestRezFromInventory, RequestDeRezToInventory, WearOutfit)
 
 ### 3.3 Appearance System
 - [ ] Wearable editor (shape, skin, hair, eyes, shirt, pants, etc.)
@@ -228,11 +228,11 @@
 | 1.4 Sound | 6/6 | 6 | **100%** ✅ |
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
-| Faza 3 | 0/16 | 16 | 0% |
+| Faza 3 | 12/16 | 16 | **75%** |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **35/85** | **85** | **41%** |
+| **ŁĄCZNIE** | **47/85** | **85** | **55%** |
 
 ## Priorytet realizacji
 
@@ -278,6 +278,8 @@ W każdej fazie:
 | engine/AttachmentRenderer.ts | 280 | Avatar attachments (58 SL attachment points) |
 | ui/ProfilePanel.ts | 180 | Avatar profile card popup |
 | ui/GroupPanel.ts | 310 | Group list, chat, and notices |
+| ui/InventoryPanel.ts | 400 | Inventory browser (folder tree, search, wear/rez) |
+| engine/InteractionManager.ts | 130 | Object raycasting + sit/touch/pay |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
