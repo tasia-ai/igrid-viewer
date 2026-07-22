@@ -237,9 +237,16 @@ connectBtn.addEventListener('click', async () => {
   );
   try {
     showPreloader('Connecting to grid...');
-    await gridClient.start();
+    // Add timeout to prevent infinite hang
+    const connectTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Connection timed out — is the grid running?')), 15000)
+    );
+    await Promise.race([gridClient.start(), connectTimeout]);
     showPreloader('Entering world...');
-    await gridClient.connectAvatar(selectedAvatarId);
+    const avatarTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Avatar connection timed out')), 15000)
+    );
+    await Promise.race([gridClient.connectAvatar(selectedAvatarId), avatarTimeout]);
     hidePreloader();
     showWorldUI();
     sceneManager.animate((delta) => {
@@ -249,7 +256,14 @@ connectBtn.addEventListener('click', async () => {
       gridClient?.animationSystem?.update(delta);
       gridClient?.attachmentRenderer?.update();
     });
-  } catch (err) { console.error('Connect failed:', err); }
+  } catch (err) {
+    console.error('Connect failed:', err);
+    hidePreloader();
+    addChatMessage('System', `Connection failed: ${(err as Error).message || 'Unknown error'}. Is the I-Grid server running?`);
+    showError(`Connection failed: ${(err as Error).message || 'Unknown error'}`);
+    // Still show world UI so user can see the error
+    showWorldUI();
+  }
 });
 
 // === RECONNECT (from top bar) ===
@@ -278,8 +292,15 @@ reconnectBtn.addEventListener('click', async () => {
     (otherId, otherName, messages) => { if (!convos.has(otherId)) convos.set(otherId, { friendId: otherId, friendName: otherName, messages: [], unread: 0 }); const conv = convos.get(otherId)!; for (const m of messages) conv.messages.push({ from: m.from, text: m.text, time: new Date(m.time) }); renderFriends(); },
   );
   try {
-    await gridClient.start();
-    await gridClient.connectAvatar(selectedAvatarId);
+    showPreloader('Reconnecting...');
+    const connectTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Connection timed out')), 15000)
+    );
+    await Promise.race([gridClient.start(), connectTimeout]);
+    const avatarTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Avatar connection timed out')), 15000)
+    );
+    await Promise.race([gridClient.connectAvatar(selectedAvatarId), avatarTimeout]);
     hidePreloader();
     showWorldUI();
     sceneManager.animate((delta) => {

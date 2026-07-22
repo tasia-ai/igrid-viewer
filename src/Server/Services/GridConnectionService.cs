@@ -92,6 +92,17 @@ public class GridConnectionService
         // Begin async login (non-blocking, fires LoginProgress when done)
         client.Network.BeginLogin(loginParams);
 
+        // Add timeout — if grid doesn't respond in 10s, fail gracefully
+        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ =>
+        {
+            if (!tcs.Task.IsCompleted)
+            {
+                Console.WriteLine($"[Grid] Login TIMEOUT for {avatar.FirstName} {avatar.LastName}");
+                client.Network.LoginProgress -= OnLoginProgress;
+                tcs.TrySetResult(null);
+            }
+        });
+
         return tcs.Task;
     }
 
