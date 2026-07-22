@@ -15,6 +15,7 @@ import { AttachmentRenderer, type AttachmentData } from '../engine/AttachmentRen
 import { ProfilePanel, type ProfileData } from '../ui/ProfilePanel';
 import { GroupPanel, type GroupData } from '../ui/GroupPanel';
 import { InteractionManager, type InteractionResult, type InteractionType } from '../engine/InteractionManager';
+import { InventoryPanel, type InventoryFolder, type InventoryItem, type InventoryAction } from '../ui/InventoryPanel';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -36,6 +37,7 @@ export class GridClient {
   public profilePanel: ProfilePanel;
   public groupPanel: GroupPanel;
   public interactionManager: InteractionManager;
+  public inventoryPanel: InventoryPanel;
   private _connected = false;
 
   public get connected(): boolean {
@@ -66,6 +68,9 @@ export class GridClient {
     this.profilePanel = new ProfilePanel();
     this.groupPanel = new GroupPanel();
     this.interactionManager = new InteractionManager(sceneManager.scene, sceneManager.camera);
+    this.inventoryPanel = new InventoryPanel({
+      onAction: (action, target) => this.handleInventoryAction(action, target),
+    });
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
       this.handleInteraction(result, type);
@@ -273,6 +278,14 @@ export class GridClient {
       console.log(`[Groups] Received ${data.notices.length} notices for group ${data.groupId}`);
     });
 
+    hub.on('InventoryRoot', (data: any) => {
+      this.inventoryPanel.setInventory(data);
+    });
+
+    hub.on('FolderExpanded', (data: any) => {
+      this.inventoryPanel.expandFolder(data.folderId, data.folders, data.items);
+    });
+
     hub.on('FlexibleUpdate', (data: any) => {
       const flexData: FlexibleData = {
         objectId: data.objectId,
@@ -422,6 +435,33 @@ export class GridClient {
   }
 
   /**
+   * Handle inventory actions (wear/rez/take/delete).
+   */
+  private handleInventoryAction(action: InventoryAction, target: any): void {
+    if (!this.connection) return;
+
+    switch (action) {
+      case 'rez':
+        this.connection.invoke('RezObject', target.id);
+        break;
+      case 'wear':
+        this.connection.invoke('WearItem', target.id);
+        break;
+      case 'take':
+        // TODO: Need local object ID
+        console.log('[Inventory] Take object - need local ID');
+        break;
+      case 'delete':
+        console.log(`[Inventory] Delete: ${target.name}`);
+        break;
+      case 'rename':
+        console.log(`[Inventory] Open folder: ${target.name}`);
+        this.connection.invoke('ExpandFolder', target.id);
+        break;
+    }
+  }
+
+  /**
    * Handle object interactions from the InteractionManager.
    */
   private handleInteraction(result: InteractionResult, type: InteractionType): void {
@@ -463,6 +503,7 @@ export class GridClient {
     this.profilePanel.dispose();
     this.groupPanel.dispose();
     this.interactionManager.dispose();
+    this.inventoryPanel.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();

@@ -523,8 +523,15 @@ public class ViewerHub : Hub
         var regionName = client.Network.CurrentSim?.Name ?? "Unknown Region";
         var regionHandle = client.Network.CurrentSim?.Handle ?? 0;
 
-        // RequestProfile — fetch avatar profile data
-        // Registered as a hub method, not a callback
+        // Send initial inventory root
+        try
+        {
+            var rootFolder = client.Inventory.Store.RootFolder;
+            var rootData = SerializeFolder(client, rootFolder);
+            await caller.SendAsync("InventoryRoot", rootData);
+        }
+        catch { }
+
         var regionX = (int)((regionHandle >> 32) & 0xFFFFFFFF);
         var regionY = (int)(regionHandle & 0xFFFFFFFF);
         await caller.SendAsync("AvatarConnected", new
@@ -842,5 +849,177 @@ public class ViewerHub : Hub
             }
         }
         catch { }
+    }
+
+    // ── Inventory Hub Methods ────────────────────────────────
+
+    /// <summary>
+    /// Expand a folder and return its children + items.
+    /// </summary>
+    public async Task ExpandFolder(string folderIdStr)
+    {
+        var caller = Clients.Caller;
+        try
+        {
+            if (!Guid.TryParse(folderIdStr, out var folderGuid)) return;
+            var folderId = new UUID(folderGuid);
+
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            var contents = client.Inventory.Store.GetContents(folderId);
+            var folders = new List<object>();
+            var items = new List<object>();
+
+            foreach (var child in contents)
+            {
+                if (child is OpenMetaverse.InventoryFolder folder)
+                {
+                    folders.Add(new
+                    {
+                        Id = folder.UUID.ToString(),
+                        ParentId = folder.ParentUUID.ToString(),
+                        Name = folder.Name,
+                        Type = folder.PreferredType.ToString(),
+                        ChildCount = folder.DescendentCount,
+                    });
+                }
+                else if (child is OpenMetaverse.InventoryItem item)
+                {
+                    items.Add(new
+                    {
+                        Id = item.UUID.ToString(),
+                        ParentId = item.ParentUUID.ToString(),
+                        Name = item.Name,
+                        Description = item.Description,
+                        AssetType = item.AssetType.ToString(),
+                        InventoryType = item.InventoryType.ToString(),
+                    });
+                }
+            }
+
+            await caller.SendAsync("FolderExpanded", new
+            {
+                FolderId = folderIdStr,
+                Folders = folders,
+                Items = items,
+            });
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Rez an inventory object into the world.
+    /// </summary>
+    public async Task RezObject(string itemIdStr)
+    {
+        try
+        {
+            if (!Guid.TryParse(itemIdStr, out var itemGuid)) return;
+            var itemId = new UUID(itemGuid);
+
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            var item = client.Inventory.Store[itemId] as OpenMetaverse.InventoryItem;
+            if (item == null) return;
+
+            var sim = client.Network.CurrentSim;
+            if (sim == null) return;
+
+            var pos = client.Self.SimPosition + new Vector3(1, 0, 0);
+            client.Inventory.RequestRezFromInventory(sim, Quaternion.Identity, pos, item);
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// DeRez (take back) an object to inventory.
+    /// </summary>
+    public async Task TakeObject(uint objectLocalId)
+    {
+        try
+        {
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            client.Inventory.RequestDeRezToInventory(objectLocalId);
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Wear a clothing/body item.
+    /// </summary>
+    public async Task WearItem(string itemIdStr)
+    {
+        try
+        {
+            if (!Guid.TryParse(itemIdStr, out var itemGuid)) return;
+            var itemId = new UUID(itemGuid);
+
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            var item = client.Inventory.Store[itemId] as OpenMetaverse.InventoryItem;
+            if (item == null) return;
+
+            var items = new List<OpenMetaverse.InventoryBase> { item };
+            client.Appearance.WearOutfit(items, true);
+        }
+        catch { }
+    }
+
+    private static object SerializeFolder(OpenMetaverse.GridClient client, OpenMetaverse.InventoryFolder folder)
+    {
+        var childFolders = new List<object>();
+        var childItems = new List<object>();
+
+        var contents = client.Inventory.Store.GetContents(folder.UUID);
+        foreach (var child in contents)
+        {
+            if (child is OpenMetaverse.InventoryFolder subFolder)
+            {
+                childFolders.Add(new
+                {
+                    Id = subFolder.UUID.ToString(),
+                    ParentId = subFolder.ParentUUID.ToString(),
+                    Name = subFolder.Name,
+                    Type = subFolder.PreferredType.ToString(),
+                    ChildCount = subFolder.DescendentCount,
+                });
+            }
+            else if (child is OpenMetaverse.InventoryItem item)
+            {
+                childItems.Add(new
+                {
+                    Id = item.UUID.ToString(),
+                    ParentId = item.ParentUUID.ToString(),
+                    Name = item.Name,
+                    Description = item.Description,
+                    AssetType = item.AssetType.ToString(),
+                    InventoryType = item.InventoryType.ToString(),
+                });
+            }
+        }
+
+        return new
+        {
+            Id = folder.UUID.ToString(),
+            ParentId = folder.ParentUUID.ToString(),
+            Name = folder.Name,
+            Type = folder.PreferredType.ToString(),
+            ChildCount = folder.DescendentCount,
+            Children = childFolders,
+            Items = childItems,
+        };
     }
 }
