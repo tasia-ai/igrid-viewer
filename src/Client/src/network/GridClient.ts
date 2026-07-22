@@ -12,6 +12,7 @@ import { ParticleSystemManager, type ParticleSystemData } from '../engine/Partic
 import { FlexibleRenderer, type FlexibleData } from '../engine/FlexibleRenderer';
 import { AnimationSystem } from '../engine/AnimationSystem';
 import { AttachmentRenderer, type AttachmentData } from '../engine/AttachmentRenderer';
+import { ProfilePanel, type ProfileData } from '../ui/ProfilePanel';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -30,6 +31,7 @@ export class GridClient {
   public flexibleRenderer: FlexibleRenderer;
   public animationSystem: AnimationSystem;
   public attachmentRenderer: AttachmentRenderer;
+  public profilePanel: ProfilePanel;
   private _connected = false;
 
   public get connected(): boolean {
@@ -57,6 +59,7 @@ export class GridClient {
     this.objects = new ObjectRenderer(sceneManager.scene, this.materialLoader);
     this.animationSystem = new AnimationSystem(sceneManager.scene);
     this.attachmentRenderer = new AttachmentRenderer(sceneManager.scene);
+    this.profilePanel = new ProfilePanel();
     this.avatars = new AvatarRenderer(sceneManager.scene, this.animationSystem, this.attachmentRenderer);
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
     this.soundManager = new SoundManager(baseUrl, authToken);
@@ -223,6 +226,21 @@ export class GridClient {
       this.attachmentRenderer.updateAttachment(attData);
     });
 
+    hub.on('ProfileData', (data: any) => {
+      const profile: ProfileData = {
+        id: data.avatarId,
+        name: data.avatarId, // Will be overridden by caller
+        title: data.title,
+        profileImage: data.profileImage !== '00000000-0000-0000-0000-000000000000'
+          ? `${this.baseUrl}/api/assets/${data.profileImage}` : undefined,
+        bio: data.about,
+        homeLocation: data.homeLocation,
+        online: data.online,
+        lastLogin: data.memberSince,
+      };
+      this.profilePanel.show(profile);
+    });
+
     hub.on('FlexibleUpdate', (data: any) => {
       const flexData: FlexibleData = {
         objectId: data.objectId,
@@ -364,6 +382,14 @@ export class GridClient {
   }
 
   /**
+   * Request an avatar's profile data from the server.
+   */
+  async requestProfile(avatarId: string): Promise<void> {
+    if (!this.connection) return;
+    await this.connection.invoke('RequestProfile', avatarId);
+  }
+
+  /**
    * Disconnect from the server.
    */
   async stop(): Promise<void> {
@@ -372,6 +398,7 @@ export class GridClient {
     this.flexibleRenderer.clear();
     this.animationSystem.clear();
     this.attachmentRenderer.clear();
+    this.profilePanel.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();

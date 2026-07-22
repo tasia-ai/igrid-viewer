@@ -463,6 +463,9 @@ public class ViewerHub : Hub
         // Connected
         var regionName = client.Network.CurrentSim?.Name ?? "Unknown Region";
         var regionHandle = client.Network.CurrentSim?.Handle ?? 0;
+
+        // RequestProfile — fetch avatar profile data
+        // Registered as a hub method, not a callback
         var regionX = (int)((regionHandle >> 32) & 0xFFFFFFFF);
         var regionY = (int)(regionHandle & 0xFFFFFFFF);
         await caller.SendAsync("AvatarConnected", new
@@ -671,4 +674,59 @@ public class ViewerHub : Hub
     }
 
     private static float Clamp01(float v) => v < 0f ? 0f : v > 1f ? 1f : v;
+
+    /// <summary>
+    /// Fetch avatar profile data and send it back to the caller.
+    /// Called by the client via connection.invoke('RequestProfile', avatarId).
+    /// </summary>
+    public async Task RequestProfile(string avatarIdStr)
+    {
+        var caller = Clients.Caller;
+        try
+        {
+            if (!Guid.TryParse(avatarIdStr, out var guid)) return;
+            var avatarId = new UUID(guid);
+
+            // Get the session for this user
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+            var client = session.Client;
+
+            // Request properties (callback-based, use ManualResetEvent)
+            var received = new ManualResetEventSlim(false);
+            OpenMetaverse.Avatar.AvatarProperties? props = null;
+
+            void OnProperties(object? s, AvatarPropertiesReplyEventArgs e)
+            {
+                if (e.AvatarID == avatarId)
+                {
+                    props = e.Properties;
+                    received.Set();
+                }
+            }
+
+            client.Avatars.AvatarPropertiesReply += OnProperties;
+            client.Avatars.RequestAvatarProperties(avatarId);
+
+            // Wait up to 5 seconds
+            received.Wait(5000);
+            client.Avatars.AvatarPropertiesReply -= OnProperties;
+
+            if (props.HasValue)
+            {
+                var p = props.Value;
+                var profileImage = p.ProfileImage != UUID.Zero ? p.ProfileImage.ToString() : null;
+                await caller.SendAsync("ProfileData", new
+                {
+                    AvatarId = avatarId.ToString(),
+                    ProfileImage = profileImage,
+                    About = p.AboutText,
+                    BornOn = p.BornOn,
+                    MemberSince = p.BornOn,
+                });
+            }
+        }
+        catch { }
+    }
 }
