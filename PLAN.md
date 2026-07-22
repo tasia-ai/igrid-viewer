@@ -28,7 +28,7 @@
 - Plik: `src/Client/src/engine/FlexibleRenderer.ts`
 
 ### 1.4 Sound Effects
-- [ ] 3D positional audio via Web Audio API
+- [x] 3D positional audio via Web Audio API
 - [ ] Ambient sounds (region environment)
 - [ ] Object sounds (PreloadSound, AttachedSound events)
 - [ ] Footstep sounds
