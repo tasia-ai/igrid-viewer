@@ -23,6 +23,8 @@ import { MediaManager } from '../engine/MediaManager';
 import { BuildTools, type BuildTool, type SelectedObject } from '../engine/BuildTools';
 import { LandTools, type ParcelInfo } from '../ui/LandTools';
 import { WorldMap } from '../ui/WorldMap';
+import { NotecardEditor } from '../ui/NotecardEditor';
+import { SnapshotTools, type SnapshotOptions } from '../ui/SnapshotTools';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -52,6 +54,8 @@ export class GridClient {
   public buildTools: BuildTools;
   public landTools: LandTools;
   public worldMap: WorldMap;
+  public notecardEditor: NotecardEditor;
+  public snapshotTools: SnapshotTools;
   private _connected = false;
 
   public get connected(): boolean {
@@ -104,6 +108,12 @@ export class GridClient {
     });
     this.worldMap = new WorldMap({
       onTeleport: (regionId, _x, _y) => this.teleport(regionId),
+    });
+    this.notecardEditor = new NotecardEditor({
+      onSave: (id, content) => this.connection?.invoke('SaveNotecard', id, content),
+    });
+    this.snapshotTools = new SnapshotTools({
+      onCapture: (imageData, options) => this.handleSnapshot(imageData, options),
     });
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
@@ -484,6 +494,25 @@ export class GridClient {
   }
 
   /**
+   * Handle snapshot capture and upload to TasiaFeed.
+   */
+  private handleSnapshot(imageData: string, options: SnapshotOptions): void {
+    const metadata = {
+      avatarName: 'Avatar',
+      gridName: 'I-Grid',
+      regionName: 'Current Region',
+      position: '0, 0, 0',
+    };
+    this.snapshotTools.uploadToFeed(imageData, options, metadata).then((result) => {
+      if (result.success) {
+        console.log('[Snapshot] Uploaded:', result.postUrl);
+      } else {
+        console.error('[Snapshot] Upload failed:', result.message);
+      }
+    });
+  }
+
+  /**
    * Handle search requests from the SearchPanel.
    */
   private handleSearch(category: SearchCategory, query: string): void {
@@ -584,6 +613,8 @@ export class GridClient {
     this.buildTools.dispose();
     this.landTools.dispose();
     this.worldMap.dispose();
+    this.notecardEditor.dispose();
+    this.snapshotTools.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
