@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { AnimationSystem } from './AnimationSystem';
 
 export interface AvatarData {
   id: string;
@@ -12,9 +13,11 @@ export class AvatarRenderer {
   private scene: THREE.Scene;
   private avatars: Map<string, THREE.Group> = new Map();
   private textureCache: Map<string, THREE.Texture> = new Map();
+  private animationSystem: AnimationSystem;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, animationSystem: AnimationSystem) {
     this.scene = scene;
+    this.animationSystem = animationSystem;
   }
 
   async updateAvatar(data: AvatarData): Promise<void> {
@@ -24,6 +27,7 @@ export class AvatarRenderer {
       group = await this.createAvatar(data);
       this.scene.add(group);
       this.avatars.set(data.id, group);
+      this.animationSystem.registerAvatar(data.id, group);
     }
 
     group.position.set(data.position.x, data.position.z, data.position.y);

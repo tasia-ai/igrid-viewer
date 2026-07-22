@@ -10,6 +10,7 @@ import { type WindlightSettings } from '../engine/Environment';
 import { SoundManager } from '../engine/SoundManager';
 import { ParticleSystemManager, type ParticleSystemData } from '../engine/ParticleSystem';
 import { FlexibleRenderer, type FlexibleData } from '../engine/FlexibleRenderer';
+import { AnimationSystem } from '../engine/AnimationSystem';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -26,6 +27,7 @@ export class GridClient {
   public soundManager: SoundManager;
   public particleManager: ParticleSystemManager;
   public flexibleRenderer: FlexibleRenderer;
+  public animationSystem: AnimationSystem;
   private _connected = false;
 
   public get connected(): boolean {
@@ -51,7 +53,8 @@ export class GridClient {
     this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
     this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
     this.objects = new ObjectRenderer(sceneManager.scene, this.materialLoader);
-    this.avatars = new AvatarRenderer(sceneManager.scene);
+    this.animationSystem = new AnimationSystem(sceneManager.scene);
+    this.avatars = new AvatarRenderer(sceneManager.scene, this.animationSystem);
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
     this.soundManager = new SoundManager(baseUrl, authToken);
     this.particleManager = new ParticleSystemManager(sceneManager.scene);
@@ -192,6 +195,16 @@ export class GridClient {
 
     hub.on('AmbientSound', (data: any) => {
       this.soundManager.playAmbient(data.soundId, data.gain ?? 0.3);
+    });
+
+    hub.on('ObjectAnimation', (data: any) => {
+      this.animationSystem.updateAnimations(data.objectId, data.animations);
+    });
+
+    hub.on('SelfAnimation', (data: any) => {
+      // Self animations — apply to our own avatar
+      // The avatar ID comes from AvatarConnected
+      this.animationSystem.updateAnimations('self', data.animations);
     });
 
     hub.on('FlexibleUpdate', (data: any) => {
@@ -341,6 +354,7 @@ export class GridClient {
     this.soundManager.dispose();
     this.particleManager.clear();
     this.flexibleRenderer.clear();
+    this.animationSystem.clear();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();

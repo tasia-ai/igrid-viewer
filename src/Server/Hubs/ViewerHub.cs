@@ -388,6 +388,34 @@ public class ViewerHub : Hub
         client.Friends.FriendOffline += async (_, e) =>
         { try { await caller.SendAsync("FriendUpdate", new { Id = e.Friend.UUID.ToString(), Name = e.Friend.Name ?? "Unknown", Online = false }); } catch { } };
 
+        // ── Avatar Animations ──────────────────────────────────
+        client.Objects.ObjectAnimation += async (_, e) =>
+        {
+            try
+            {
+                var animIds = e.Animations.Select(a => a.AnimationID.ToString()).ToList();
+                await caller.SendAsync("ObjectAnimation", new
+                {
+                    ObjectId = e.ObjectID.ToString(),
+                    Animations = animIds,
+                });
+            }
+            catch { }
+        };
+
+        client.Self.AnimationsChanged += async (_, e) =>
+        {
+            try
+            {
+                var animIds = e.Animations.Keys.Select(id => id.ToString()).ToList();
+                await caller.SendAsync("SelfAnimation", new
+                {
+                    Animations = animIds,
+                });
+            }
+            catch { }
+        };
+
         // Connected
         var regionName = client.Network.CurrentSim?.Name ?? "Unknown Region";
         var regionHandle = client.Network.CurrentSim?.Handle ?? 0;
