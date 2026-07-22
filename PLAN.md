@@ -1,7 +1,7 @@
 # I-Grid Viewer — Plan rozwoju do pełnego Firestorm
 
 ## Status obecny
-✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner)**
+✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points)**
 
 ## FAZA 1 — Świat żyje (wizualnie)
 
@@ -16,11 +16,12 @@
 - Serwer: `EnvironmentUpdate` event z `OpenMetaverse.WindlightSettings`
 
 ### 1.2 Particle Effects
-- [ ] UDP `ParticleUpdate` → Three.js `Points` / `Sprite`
-- [ ] System: pozycja, kolor, rozmiar, prędkość, TTL
-- [ ] Typy: spark, fire, smoke, smoke plume, glow, ring
-- Plik: `src/Client/src/engine/ParticleSystem.ts` ← NIE ISTNIEJE
-- Serwer: subskrypcja `client.Objects.ObjectUpdate` + particle data
+- [x] UDP `ParticleUpdate` → Three.js `Points` / `Sprite` — `ParticleSystem.ts` (320 linii): BufferGeometry + PointsMaterial, GPU-efficient
+- [x] System: pozycja, kolor, rozmiar, prędkość, TTL — lerp size/color based on age, burst emission
+- [x] Typy: spark, fire, smoke, glow, ring — procedural textures per pattern, AdditiveBlending
+- [x] Serwer: forwarduje `prim.ParticleSys` via SignalR `ParticleSystemUpdate` event
+- Plik: `src/Client/src/engine/ParticleSystem.ts`
+- Serwer: subskrypcja `client.Objects.ObjectUpdate` + `prim.ParticleSys` data
 
 ### 1.3 Flexible Prims
 - [ ] Flexi-enabled prims (flagi, włosy, tkanina)
@@ -218,16 +219,16 @@
 | Faza | Zrobione | Razem | % |
 |------|----------|-------|---|
 | 1.1 Environment | 7/7 | 7 | **100%** ✅ |
-| 1.2 Particles | 0/3 | 3 | 0% |
+| 1.2 Particles | 4/4 | 4 | **100%** ✅ |
 | 1.3 Flexi Prims | 0/3 | 3 | 0% |
 | 1.4 Sound | 2/5 | 5 | 40% |
-| **FAZA 1** | **9/18** | **18** | **50%** |
+| **FAZA 1** | **13/18** | **18** | **72%** |
 | Faza 2 | 0/11 | 11 | 0% |
 | Faza 3 | 0/16 | 16 | 0% |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **9/81** | **81** | **11%** |
+| **ŁĄCZNIE** | **13/81** | **81** | **16%** |
 
 ## Priorytet realizacji
 
@@ -239,7 +240,7 @@ W każdej fazie:
 3. Naprawiam bugi
 4. Dopiero przechodzę dalej
 
-**Następne do roboty**: 1.2 Particle Effects lub 1.3 Flexible Prims (oba nie zaczęte, brak plików)
+**Następne do roboty**: 1.3 Flexible Prims (brak plików) lub 1.4 reszta Sound (ambient, footsteps)
 
 **Testy**: Każda zmiana sprawdzana przez:
 - Konsolę przeglądarki (F12)
@@ -267,6 +268,7 @@ W każdej fazie:
 | engine/MinimapRenderer.ts | 89 | Minimap overlay |
 | engine/MeshDecoderWorker.ts | 65 | Web Worker for mesh decode |
 | engine/SceneManager.ts | 57 | Three.js scene setup |
+| engine/ParticleSystem.ts | 320 | Particle effects (spark/fire/smoke/glow/ring) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
