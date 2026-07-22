@@ -734,6 +734,61 @@ public class ViewerHub : Hub
 
     private static float Clamp01(float v) => v < 0f ? 0f : v > 1f ? 1f : v;
 
+    // ── Object Interaction Hub Methods ────────────────────────
+
+    /// <summary>
+    /// Request to sit on an object. Client sends objectId, server calls RequestSit.
+    /// </summary>
+    public async Task RequestSit(string avatarIdStr, string objectIdStr)
+    {
+        try
+        {
+            if (!Guid.TryParse(objectIdStr, out var objGuid)) return;
+            var objectId = new UUID(objGuid);
+
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+
+            session.Client.Self.RequestSit(objectId, Vector3.Zero);
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Stand up from current sit target.
+    /// </summary>
+    public async Task StandUp()
+    {
+        try
+        {
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+
+            session.Client.Self.Sit();
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Touch (click) an object.
+    /// </summary>
+    public async Task TouchObject(string objectIdStr)
+    {
+        try
+        {
+            if (!uint.TryParse(objectIdStr, out var objectId)) return;
+
+            var sessions = _grid.GetUserSessions(UserId);
+            var session = sessions.FirstOrDefault();
+            if (session?.Client == null) return;
+
+            session.Client.Self.Touch(objectId);
+        }
+        catch { }
+    }
+
     /// <summary>
     /// Fetch avatar profile data and send it back to the caller.
     /// Called by the client via connection.invoke('RequestProfile', avatarId).

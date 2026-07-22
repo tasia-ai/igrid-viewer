@@ -14,6 +14,7 @@ import { AnimationSystem } from '../engine/AnimationSystem';
 import { AttachmentRenderer, type AttachmentData } from '../engine/AttachmentRenderer';
 import { ProfilePanel, type ProfileData } from '../ui/ProfilePanel';
 import { GroupPanel, type GroupData } from '../ui/GroupPanel';
+import { InteractionManager, type InteractionResult, type InteractionType } from '../engine/InteractionManager';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -34,6 +35,7 @@ export class GridClient {
   public attachmentRenderer: AttachmentRenderer;
   public profilePanel: ProfilePanel;
   public groupPanel: GroupPanel;
+  public interactionManager: InteractionManager;
   private _connected = false;
 
   public get connected(): boolean {
@@ -63,6 +65,12 @@ export class GridClient {
     this.attachmentRenderer = new AttachmentRenderer(sceneManager.scene);
     this.profilePanel = new ProfilePanel();
     this.groupPanel = new GroupPanel();
+    this.interactionManager = new InteractionManager(sceneManager.scene, sceneManager.camera);
+    // Set up interaction callback
+    this.interactionManager.setCallback((result, type) => {
+      this.handleInteraction(result, type);
+    });
+
     this.avatars = new AvatarRenderer(sceneManager.scene, this.animationSystem, this.attachmentRenderer);
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
     this.soundManager = new SoundManager(baseUrl, authToken);
@@ -414,6 +422,36 @@ export class GridClient {
   }
 
   /**
+   * Handle object interactions from the InteractionManager.
+   */
+  private handleInteraction(result: InteractionResult, type: InteractionType): void {
+    if (!this.connection) return;
+
+    switch (type) {
+      case 'sit':
+        this.connection.invoke('RequestSit', 'self', result.objectId);
+        break;
+      case 'touch':
+        this.connection.invoke('TouchObject', result.objectId);
+        break;
+      case 'pay':
+        // TODO: Show pay dialog
+        console.log(`[Interaction] Pay object: ${result.objectName}`);
+        break;
+      default:
+        console.log(`[Interaction] ${type} on ${result.objectName} (${result.objectId})`);
+    }
+  }
+
+  /**
+   * Stand up from current sit target.
+   */
+  async standUp(): Promise<void> {
+    if (!this.connection) return;
+    await this.connection.invoke('StandUp');
+  }
+
+  /**
    * Disconnect from the server.
    */
   async stop(): Promise<void> {
@@ -424,6 +462,7 @@ export class GridClient {
     this.attachmentRenderer.clear();
     this.profilePanel.dispose();
     this.groupPanel.dispose();
+    this.interactionManager.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
