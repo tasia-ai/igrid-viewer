@@ -147,12 +147,12 @@
 - Plik: `src/Client/src/ui/WorldMap.ts` ← NIE ISTNIEJE
 
 ### 4.5 Media/Music Streaming
-- [ ] Parcel music (SHOUTcast/Icecast → Web Audio API)
-- [ ] Media textures (HTML5 iframe overlay)
-- [ ] Volume controls
-- [ ] Stream title display
-- Plik: `src/Client/src/engine/MediaManager.ts` ← NIE ISTNIEJE
-- Serwer: `ParcelMediaCommand` event
+- [x] Parcel music (SHOUTcast/Icecast → Web Audio API) — `MediaManager.ts` (280 linii): AudioContext + MediaElementSource + GainNode
+- [x] Media textures (HTML5 iframe overlay) — addMediaTexture/removeMediaTexture with sandboxed iframes
+- [x] Volume controls — setVolume/togglePlayPause with GainNode
+- [x] Stream title display — floating UI with stream name and close button
+- Plik: `src/Client/src/engine/MediaManager.ts`
+- Serwer: ParcelMediaCommand events (low-level packet, client-side MediaManager handles playback)
 
 ### 4.6 Voice Chat
 - [ ] WebRTC via Vivox SDK lub open alternative
@@ -231,10 +231,10 @@
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
 | Faza 3 | 18/18 | 18 | **100%** ✅ |
-| Faza 4 | 4/18 | 18 | **22%** |
+| Faza 4 | 8/18 | 18 | **44%** |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **57/85** | **85** | **67%** |
+| **ŁĄCZNIE** | **61/85** | **85** | **72%** |
 
 ## Priorytet realizacji
 
@@ -285,6 +285,7 @@ W każdej fazie:
 | ui/AppearanceEditor.ts | 400 | Avatar appearance editor (wearables + visual params) |
 | engine/HUDRenderer.ts | 210 | HUD attachment rendering (orthographic camera pass) |
 | ui/SearchPanel.ts | 350 | Search UI (people/places/events/groups/classifieds) |
+| engine/MediaManager.ts | 280 | Media/music streaming (Web Audio API + HTML5 iframes) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
