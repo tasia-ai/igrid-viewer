@@ -460,6 +460,65 @@ public class ViewerHub : Hub
             catch { }
         };
 
+        // ── Groups ──────────────────────────────────────────
+        client.Groups.CurrentGroups += async (_, e) =>
+        {
+            try
+            {
+                var groups = e.Groups.Select(g => new
+                {
+                    Id = g.Value.ID.ToString(),
+                    Name = g.Value.Name,
+                    Title = g.Value.MemberTitle,
+                    MemberCount = g.Value.GroupMembershipCount,
+                    Motto = g.Value.Charter,
+                    Insignia = g.Value.InsigniaID != UUID.Zero ? g.Value.InsigniaID.ToString() : null,
+                }).ToList();
+                await caller.SendAsync("GroupList", new { Groups = groups });
+            }
+            catch { }
+        };
+
+        client.Self.ChatFromSimulator += async (_, e) =>
+        {
+            try
+            {
+                // Only forward group chat (ChatType 1 = whisper, 2 = say, 3 = shout, but group chat is ChatType 4)
+                // Actually group chat comes with SourceType == ChatSourceType.Object or through session
+                // For now, forward all chat and let the client filter
+                if (e.SourceType == ChatSourceType.Agent || e.SourceType == ChatSourceType.Object)
+                {
+                    await caller.SendAsync("ChatMessage", new
+                    {
+                        SenderName = e.FromName ?? "Unknown",
+                        Message = e.Message,
+                        SourceType = (int)e.SourceType,
+                        ChatType = (int)e.Type,
+                        Position = new { X = e.Position.X, Y = e.Position.Y, Z = e.Position.Z },
+                    });
+                }
+            }
+            catch { }
+        };
+
+        client.Groups.GroupNoticesListReply += async (_, e) =>
+        {
+            try
+            {
+                var notices = e.Notices.Select(n => new
+                {
+                    Id = n.NoticeID.ToString(),
+                    GroupId = e.GroupID.ToString(),
+                    Subject = n.Subject,
+                    SenderName = n.FromName,
+                    Timestamp = n.Timestamp.ToString(),
+                    HasAttachment = n.HasAttachment,
+                }).ToList();
+                await caller.SendAsync("GroupNotices", new { GroupId = e.GroupID.ToString(), Notices = notices });
+            }
+            catch { }
+        };
+
         // Connected
         var regionName = client.Network.CurrentSim?.Name ?? "Unknown Region";
         var regionHandle = client.Network.CurrentSim?.Handle ?? 0;

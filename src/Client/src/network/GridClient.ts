@@ -13,6 +13,7 @@ import { FlexibleRenderer, type FlexibleData } from '../engine/FlexibleRenderer'
 import { AnimationSystem } from '../engine/AnimationSystem';
 import { AttachmentRenderer, type AttachmentData } from '../engine/AttachmentRenderer';
 import { ProfilePanel, type ProfileData } from '../ui/ProfilePanel';
+import { GroupPanel, type GroupData } from '../ui/GroupPanel';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -32,6 +33,7 @@ export class GridClient {
   public animationSystem: AnimationSystem;
   public attachmentRenderer: AttachmentRenderer;
   public profilePanel: ProfilePanel;
+  public groupPanel: GroupPanel;
   private _connected = false;
 
   public get connected(): boolean {
@@ -60,6 +62,7 @@ export class GridClient {
     this.animationSystem = new AnimationSystem(sceneManager.scene);
     this.attachmentRenderer = new AttachmentRenderer(sceneManager.scene);
     this.profilePanel = new ProfilePanel();
+    this.groupPanel = new GroupPanel();
     this.avatars = new AvatarRenderer(sceneManager.scene, this.animationSystem, this.attachmentRenderer);
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
     this.soundManager = new SoundManager(baseUrl, authToken);
@@ -241,6 +244,27 @@ export class GridClient {
       this.profilePanel.show(profile);
     });
 
+    hub.on('GroupList', (data: any) => {
+      const groups: GroupData[] = data.groups.map((g: any) => ({
+        id: g.id,
+        name: g.name,
+        title: g.title,
+        memberCount: g.memberCount,
+        motto: g.motto,
+        insignia: g.insignia ? `${this.baseUrl}/api/assets/${g.insignia}` : undefined,
+      }));
+      this.groupPanel.updateGroups(groups);
+    });
+
+    hub.on('GroupChat', (data: any) => {
+      this.groupPanel.addChatMessage(data.senderName, data.message);
+    });
+
+    hub.on('GroupNotices', (data: any) => {
+      // Notices are stored but not yet rendered in the panel
+      console.log(`[Groups] Received ${data.notices.length} notices for group ${data.groupId}`);
+    });
+
     hub.on('FlexibleUpdate', (data: any) => {
       const flexData: FlexibleData = {
         objectId: data.objectId,
@@ -399,6 +423,7 @@ export class GridClient {
     this.animationSystem.clear();
     this.attachmentRenderer.clear();
     this.profilePanel.dispose();
+    this.groupPanel.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
