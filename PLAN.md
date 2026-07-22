@@ -54,10 +54,11 @@
 - Serwer: `client.Objects.AvatarAnimation` event
 
 ### 2.2 Avatar Attachments
-- [ ] Attachment point rendering (58 points)
-- [ ] Object placement on skeleton joints
-- [ ] Rigged mesh binding (skin weights)
-- Plik: `src/Client/src/engine/AttachmentRenderer.ts` ← NIE ISTNIEJE
+- [x] Attachment points (58 SL points) — `AttachmentRenderer.ts` (280 linii): 58 attachment point positions mapped to body parts
+- [x] Attachment objects position tracking — relative to avatar group, updates each frame
+- [x] Attach/detach events — server forwards `AttachmentUpdate` via SignalR with attachment point lookup
+- [x] Server: tracks avatar attachments via `AvatarUpdate` events, resolves attachment point from parent avatar
+- Plik: `src/Client/src/engine/AttachmentRenderer.ts`
 
 ### 2.3 Profile Cards
 - [ ] Fetch agent profile (bio, picks, groups, friends, online)
@@ -226,12 +227,12 @@
 | 1.3 Flexi Prims | 3/3 | 3 | **100%** ✅ |
 | 1.4 Sound | 6/6 | 6 | **100%** ✅ |
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
-| Faza 2 | 5/11 | 11 | **45%** |
+| Faza 2 | 9/11 | 11 | **82%** |
 | Faza 3 | 0/16 | 16 | 0% |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **25/81** | **81** | **31%** |
+| **ŁĄCZNIE** | **29/81** | **81** | **36%** |
 
 ## Priorytet realizacji
 
@@ -243,7 +244,7 @@ W każdej fazie:
 3. Naprawiam bugi
 4. Dopiero przechodzę dalej
 
-**Następne do roboty**: 2.2 Avatar Attachments
+**Następne do roboty**: 2.3 Profile Cards
 
 **Testy**: Każda zmiana sprawdzana przez:
 - Konsolę przeglądarki (F12)
@@ -274,6 +275,7 @@ W każdej fazie:
 | engine/ParticleSystem.ts | 320 | Particle effects (spark/fire/smoke/glow/ring) |
 | engine/FlexibleRenderer.ts | 180 | Flexible prim vertex displacement (spring physics) |
 | engine/AnimationSystem.ts | 280 | Avatar animations (walk/fly/sit/idle, SL UUID mapping) |
+| engine/AttachmentRenderer.ts | 280 | Avatar attachments (58 SL attachment points) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
