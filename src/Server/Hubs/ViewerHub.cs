@@ -40,6 +40,7 @@ public class ViewerHub : Hub
         var caller = Clients.Caller;
         var client = session.Client;
         var sentMeshes = new ConcurrentDictionary<string, bool>();
+        var avatarAttachments = new Dictionary<uint, List<OpenMetaverse.Avatar.Attachment>>();
         var userPassword = await GetUserPasswordAsync();
 
         // Object updates — include texture face data for prim rendering
@@ -68,7 +69,43 @@ public class ViewerHub : Hub
                     Rotation = new { X = prim.Rotation.X, Y = prim.Rotation.Y, Z = prim.Rotation.Z, W = prim.Rotation.W },
                     Scale = new { X = prim.Scale.X, Y = prim.Scale.Y, Z = prim.Scale.Z },
                     PrimType = (int)prim.Type, TextureId = defaultTextureId, Faces = faceTextures,
+                    IsAttachment = prim.IsAttachment,
+                    AttachmentPoint = prim.IsAttachment ? (byte)0 : (byte)0, // Will be set below
+                    ParentId = prim.ParentID,
                 });
+
+                // If it's an attachment, send separate attachment update
+                if (prim.IsAttachment && prim.ParentID != 0)
+                {
+                    try
+                    {
+                        // Find the attachment point from our tracked avatar attachments
+                        byte attachPoint = 0;
+                        if (avatarAttachments.TryGetValue(prim.ParentID, out var attList))
+                        {
+                            foreach (var att in attList)
+                            {
+                                if (att.AttachmentID == prim.ID)
+                                {
+                                    attachPoint = att.AttachmentPoint;
+                                    break;
+                                }
+                            }
+                        }
+
+                        await caller.SendAsync("AttachmentUpdate", new
+                        {
+                            AvatarId = prim.ParentID.ToString(),
+                            AttachmentPoint = (int)attachPoint,
+                            ObjectId = prim.ID.ToString(),
+                            ObjectName = prim.Properties?.Name ?? "",
+                            Position = new { X = prim.Position.X, Y = prim.Position.Y, Z = prim.Position.Z },
+                            Rotation = new { X = prim.Rotation.X, Y = prim.Rotation.Y, Z = prim.Rotation.Z, W = prim.Rotation.W },
+                            Scale = new { X = prim.Scale.X, Y = prim.Scale.Y, Z = prim.Scale.Z },
+                        });
+                    }
+                    catch { }
+                }
 
                 if (prim.Type == PrimType.Mesh && prim.Sculpt?.SculptTexture != UUID.Zero)
                 {
@@ -389,6 +426,13 @@ public class ViewerHub : Hub
         { try { await caller.SendAsync("FriendUpdate", new { Id = e.Friend.UUID.ToString(), Name = e.Friend.Name ?? "Unknown", Online = false }); } catch { } };
 
         // ── Avatar Animations ──────────────────────────────────
+
+        client.Objects.AvatarUpdate += async (_, e) =>
+        {
+            if (e.Avatar?.Attachments != null)
+                avatarAttachments[e.Avatar.LocalID] = new List<OpenMetaverse.Avatar.Attachment>(e.Avatar.Attachments);
+        };
+
         client.Objects.ObjectAnimation += async (_, e) =>
         {
             try

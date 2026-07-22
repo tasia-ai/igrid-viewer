@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { AnimationSystem } from './AnimationSystem';
+import { AttachmentRenderer } from './AttachmentRenderer';
 
 export interface AvatarData {
   id: string;
@@ -14,10 +15,12 @@ export class AvatarRenderer {
   private avatars: Map<string, THREE.Group> = new Map();
   private textureCache: Map<string, THREE.Texture> = new Map();
   private animationSystem: AnimationSystem;
+  private attachmentRenderer: AttachmentRenderer;
 
-  constructor(scene: THREE.Scene, animationSystem: AnimationSystem) {
+  constructor(scene: THREE.Scene, animationSystem: AnimationSystem, attachmentRenderer: AttachmentRenderer) {
     this.scene = scene;
     this.animationSystem = animationSystem;
+    this.attachmentRenderer = attachmentRenderer;
   }
 
   async updateAvatar(data: AvatarData): Promise<void> {
@@ -28,6 +31,7 @@ export class AvatarRenderer {
       this.scene.add(group);
       this.avatars.set(data.id, group);
       this.animationSystem.registerAvatar(data.id, group);
+      this.attachmentRenderer.registerAvatar(data.id, group);
     }
 
     group.position.set(data.position.x, data.position.z, data.position.y);

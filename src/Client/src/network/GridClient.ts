@@ -11,6 +11,7 @@ import { SoundManager } from '../engine/SoundManager';
 import { ParticleSystemManager, type ParticleSystemData } from '../engine/ParticleSystem';
 import { FlexibleRenderer, type FlexibleData } from '../engine/FlexibleRenderer';
 import { AnimationSystem } from '../engine/AnimationSystem';
+import { AttachmentRenderer, type AttachmentData } from '../engine/AttachmentRenderer';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -28,6 +29,7 @@ export class GridClient {
   public particleManager: ParticleSystemManager;
   public flexibleRenderer: FlexibleRenderer;
   public animationSystem: AnimationSystem;
+  public attachmentRenderer: AttachmentRenderer;
   private _connected = false;
 
   public get connected(): boolean {
@@ -54,7 +56,8 @@ export class GridClient {
     this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
     this.objects = new ObjectRenderer(sceneManager.scene, this.materialLoader);
     this.animationSystem = new AnimationSystem(sceneManager.scene);
-    this.avatars = new AvatarRenderer(sceneManager.scene, this.animationSystem);
+    this.attachmentRenderer = new AttachmentRenderer(sceneManager.scene);
+    this.avatars = new AvatarRenderer(sceneManager.scene, this.animationSystem, this.attachmentRenderer);
     this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
     this.soundManager = new SoundManager(baseUrl, authToken);
     this.particleManager = new ParticleSystemManager(sceneManager.scene);
@@ -207,6 +210,19 @@ export class GridClient {
       this.animationSystem.updateAnimations('self', data.animations);
     });
 
+    hub.on('AttachmentUpdate', (data: any) => {
+      const attData: AttachmentData = {
+        avatarId: data.avatarId,
+        attachmentPoint: data.attachmentPoint,
+        objectId: data.objectId,
+        objectName: data.objectName,
+        position: data.position,
+        rotation: data.rotation,
+        scale: data.scale,
+      };
+      this.attachmentRenderer.updateAttachment(attData);
+    });
+
     hub.on('FlexibleUpdate', (data: any) => {
       const flexData: FlexibleData = {
         objectId: data.objectId,
@@ -355,6 +371,7 @@ export class GridClient {
     this.particleManager.clear();
     this.flexibleRenderer.clear();
     this.animationSystem.clear();
+    this.attachmentRenderer.clear();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();

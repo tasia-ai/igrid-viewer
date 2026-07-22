@@ -245,6 +245,7 @@ connectBtn.addEventListener('click', async () => {
       gridClient?.particleManager?.update(delta);
       gridClient?.flexibleRenderer?.update(delta);
       gridClient?.animationSystem?.update(delta);
+      gridClient?.attachmentRenderer?.update();
     });
   } catch (err) { console.error('Connect failed:', err); }
 });
@@ -284,6 +285,7 @@ reconnectBtn.addEventListener('click', async () => {
       gridClient?.particleManager?.update(delta);
       gridClient?.flexibleRenderer?.update(delta);
       gridClient?.animationSystem?.update(delta);
+      gridClient?.attachmentRenderer?.update();
     });
   } catch (err) {
     hidePreloader();
