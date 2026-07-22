@@ -21,6 +21,7 @@ import { HUDRenderer } from '../engine/HUDRenderer';
 import { SearchPanel, type SearchCategory, type SearchResult } from '../ui/SearchPanel';
 import { MediaManager } from '../engine/MediaManager';
 import { BuildTools, type BuildTool, type SelectedObject } from '../engine/BuildTools';
+import { LandTools, type ParcelInfo } from '../ui/LandTools';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -48,6 +49,7 @@ export class GridClient {
   public searchPanel: SearchPanel;
   public mediaManager: MediaManager;
   public buildTools: BuildTools;
+  public landTools: LandTools;
   private _connected = false;
 
   public get connected(): boolean {
@@ -94,6 +96,9 @@ export class GridClient {
     this.buildTools = new BuildTools(sceneManager.scene, sceneManager.camera, sceneManager.renderer);
     this.buildTools.setCallbacks({
       onEditProperty: (objectId, property, value) => this.connection?.invoke('SetObjectProperty', objectId, property, value),
+    });
+    this.landTools = new LandTools({
+      onAction: (action, data) => this.connection?.invoke('LandAction', action, data),
     });
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
@@ -572,6 +577,7 @@ export class GridClient {
     this.searchPanel.dispose();
     this.mediaManager.dispose();
     this.buildTools.dispose();
+    this.landTools.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
