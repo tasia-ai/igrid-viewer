@@ -1,7 +1,7 @@
 # I-Grid Viewer — Plan rozwoju do pełnego Firestorm
 
 ## Status obecny
-✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points)**
+✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics)**
 
 ## FAZA 1 — Świat żyje (wizualnie)
 
@@ -24,10 +24,11 @@
 - Serwer: subskrypcja `client.Objects.ObjectUpdate` + `prim.ParticleSys` data
 
 ### 1.3 Flexible Prims
-- [ ] Flexi-enabled prims (flagi, włosy, tkanina)
-- [ ] Vertex displacement based on wind/physics
-- [ ] Segment count z PrimData.PathSegments
-- Plik: `src/Client/src/engine/FlexibleRenderer.ts` ← NIE ISTNIEJE
+- [x] Flexi-enabled prims (flagi, włosy, tkanina) — `FlexibleRenderer.ts` (180 linii): spring physics simulation, per-vertex displacement
+- [x] Vertex displacement based on wind/physics — Hooke's law + gravity + drag + wind force
+- [x] Segment count z PrimData.PathRevolutions — calculated from path data
+- [x] Serwer: forwarduje `prim.Flexible` via SignalR `FlexibleUpdate` event
+- Plik: `src/Client/src/engine/FlexibleRenderer.ts`
 
 ### 1.4 Sound Effects
 - [x] 3D positional audio via Web Audio API — `SoundManager.ts` (224 linii): HRTF PannerNode, distanceModel, AudioBuffer cache
@@ -220,15 +221,15 @@
 |------|----------|-------|---|
 | 1.1 Environment | 7/7 | 7 | **100%** ✅ |
 | 1.2 Particles | 4/4 | 4 | **100%** ✅ |
-| 1.3 Flexi Prims | 0/3 | 3 | 0% |
+| 1.3 Flexi Prims | 3/3 | 3 | **100%** ✅ |
 | 1.4 Sound | 2/5 | 5 | 40% |
-| **FAZA 1** | **13/18** | **18** | **72%** |
+| **FAZA 1** | **16/18** | **18** | **89%** |
 | Faza 2 | 0/11 | 11 | 0% |
 | Faza 3 | 0/16 | 16 | 0% |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **13/81** | **81** | **16%** |
+| **ŁĄCZNIE** | **16/81** | **81** | **20%** |
 
 ## Priorytet realizacji
 
@@ -240,7 +241,7 @@ W każdej fazie:
 3. Naprawiam bugi
 4. Dopiero przechodzę dalej
 
-**Następne do roboty**: 1.3 Flexible Prims (brak plików) lub 1.4 reszta Sound (ambient, footsteps)
+**Następne do roboty**: 1.4 reszta Sound (ambient, footsteps, object sounds)
 
 **Testy**: Każda zmiana sprawdzana przez:
 - Konsolę przeglądarki (F12)
@@ -269,6 +270,7 @@ W każdej fazie:
 | engine/MeshDecoderWorker.ts | 65 | Web Worker for mesh decode |
 | engine/SceneManager.ts | 57 | Three.js scene setup |
 | engine/ParticleSystem.ts | 320 | Particle effects (spark/fire/smoke/glow/ring) |
+| engine/FlexibleRenderer.ts | 180 | Flexible prim vertex displacement (spring physics) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
