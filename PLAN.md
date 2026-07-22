@@ -132,12 +132,12 @@
 - Plik: `src/Client/src/engine/BuildTools.ts`
 
 ### 4.3 Land/Parcel Tools
-- [ ] Buy/Sell parcels
-- [ ] Subdivide/Join parcels
-- [ ] Set access/ban list
-- [ ] Terraform (terrain brush)
-- [ ] Set home point
-- Plik: `src/Client/src/ui/LandTools.ts` ← NIE ISTNIEJE
+- [x] Buy/Sell parcels — `LandTools.ts` (320 linii): Buy/Sell buttons with parcel info display
+- [x] Subdivide/Join parcels — Subdivide/Join buttons in land tools panel
+- [x] Set access/ban list — Access/Ban buttons for parcel management
+- [x] Terraform (terrain brush) — terrain brush with size/strength sliders
+- [x] Set home point — Set Home button for parcel home point
+- Plik: `src/Client/src/ui/LandTools.ts`
 
 ### 4.4 World Map (full)
 - [ ] Map tiles from grid
@@ -231,10 +231,10 @@
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
 | Faza 3 | 18/18 | 18 | **100%** ✅ |
-| Faza 4 | 11/18 | 18 | **61%** |
+| Faza 4 | 16/18 | 18 | **89%** |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **64/85** | **85** | **75%** |
+| **ŁĄCZNIE** | **69/85** | **85** | **81%** |
 
 ## Priorytet realizacji
 
@@ -287,6 +287,7 @@ W każdej fazie:
 | ui/SearchPanel.ts | 350 | Search UI (people/places/events/groups/classifieds) |
 | engine/MediaManager.ts | 280 | Media/music streaming (Web Audio API + HTML5 iframes) |
 | engine/BuildTools.ts | 300 | Build/edit tools (select/move/rotate/scale gizmos) |
+| ui/LandTools.ts | 320 | Land/parcel management (buy/sell/subdivide/terraform) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
