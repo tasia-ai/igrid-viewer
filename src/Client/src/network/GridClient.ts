@@ -91,6 +91,10 @@ export class GridClient {
         textureId: data.textureId,
         faces: data.faces,
       }, camPos).catch(err => console.warn('[Grid] updatePrim error:', err));
+      // Update tracked sound positions
+      this.soundManager.updateSoundPosition(data.id, {
+        x: data.position.x, y: data.position.z, z: data.position.y
+      });
     });
 
     hub.on('MeshData', async (data: any) => {
@@ -169,17 +173,25 @@ export class GridClient {
     });
 
     hub.on('AttachedSound', (data: any) => {
-      // Position will come from the ObjectUpdate for this object
-      this.soundManager.playSound(data.soundId, { x: 0, y: 0, z: 0 }, data.gain, false);
+      // Play at the object's position if we know it
+      const obj = this.objects.getPrim(data.objectId);
+      const pos = obj?.position || { x: 0, y: 0, z: 0 };
+      this.soundManager.playSound(data.soundId, { x: pos.x, y: pos.z, z: pos.y }, data.gain, false, data.objectId);
     });
 
     hub.on('PreloadSound', (data: any) => {
       // Preload the asset into the cache so it's ready when playback starts
-      this.soundManager.playSound(data.soundId, { x: 0, y: 0, z: 0 }, 1, false);
+      this.soundManager.playSound(data.soundId, { x: 0, y: 0, z: 0 }, 0, false).catch(() => {});
     });
 
     hub.on('PrimSoundUpdate', (data: any) => {
-      this.soundManager.playSound(data.soundId, { x: 0, y: 0, z: 0 }, data.gain, true);
+      const obj = this.objects.getPrim(data.objectId);
+      const pos = obj?.position || { x: 0, y: 0, z: 0 };
+      this.soundManager.playSound(data.soundId, { x: pos.x, y: pos.z, z: pos.y }, data.gain, true, data.objectId);
+    });
+
+    hub.on('AmbientSound', (data: any) => {
+      this.soundManager.playAmbient(data.soundId, data.gain ?? 0.3);
     });
 
     hub.on('FlexibleUpdate', (data: any) => {
