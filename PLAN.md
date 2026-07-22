@@ -169,9 +169,9 @@
 - Plik: `src/Client/src/ui/ScriptEditor.ts` ← NIE ISTNIEJE
 
 ### 5.2 Notecard Editor
-- [ ] Plain text editing
-- [ ] Save changes
-- Plik: `src/Client/src/ui/NotecardEditor.ts` ← NIE ISTNIEJE
+- [x] Plain text editing — `NotecardEditor.ts` (180 linii): monospace textarea, char count, modify tracking
+- [x] Save changes — Save button with server SaveNotecard hub method
+- Plik: `src/Client/src/ui/NotecardEditor.ts`
 
 ### 5.3 Upload Tools
 - [ ] Texture upload
@@ -183,17 +183,15 @@
 ### 5.4 Snapshot Tools (CUSTOM — I-Grid + TasiaFeed)
 - [ ] Capture 3D scene → canvas.toDataURL() / toBlob()
 - [ ] Upload POST do `https://apps.easierit.org/igrid/feed/api/v1/snapshots/upload.php`
-  - Body JSON: `{ image, title, description, visibility, maturity, avatar_name, grid_name, region_name, position, viewer_ver }`
-  - `image` = base64-encoded JPEG/PNG/WebP
-  - `visibility` = "public" / "unlisted"
-  - `maturity` = "general" / "moderate" / "restricted"
-  - Response: `{ success, post_url, message }`
-- [ ] Display w feedzie: `https://apps.easierit.org/igrid/feed/`
-- [ ] Custom UI design (dokumentacja od Marty)
-- [ ] Camera angle selection (front, back, top, custom)
-- [ ] Resolution/format options
-- Plik: `src/Client/src/ui/SnapshotTools.ts` ← NIE ISTNIEJE
-- Backend: TasiaFeed PHP (już istnieje na apps.easierit.org)
+  ### 5.4 Snapshot Tools (CUSTOM — I-Grid + TasiaFeed)
+  - [x] Capture 3D scene → canvas.toDataURL() / toBlob() — `SnapshotTools.ts` (320 linii): WebGLRenderer capture
+  - [x] Upload POST do `https://apps.easierit.org/igrid/feed/api/v1/snapshots/upload.php` — full API integration
+  - [x] Display w feedzie: `https://apps.easierit.org/igrid/feed/` — post URL returned from API
+  - [ ] Custom UI design (dokumentacja od Marty)
+  - [x] Camera angle selection (front, back, top, custom) — 4 preset angles
+  - [x] Resolution/format options — PNG/JPEG/WebP, quality slider
+  - Plik: `src/Client/src/ui/SnapshotTools.ts`
+  - Backend: TasiaFeed PHP (już istnieje na apps.easierit.org)
 
 ---
 
@@ -232,9 +230,9 @@
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
 | Faza 3 | 18/18 | 18 | **100%** ✅ |
 | Faza 4 | 20/25 | 25 | **80%** |
-| Faza 5 | 0/10 | 10 | 0% |
+| Faza 5 | 7/14 | 14 | **50%** |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **73/96** | **96** | **76%** |
+| **ŁĄCZNIE** | **80/108** | **108** | **74%** |
 
 ## Priorytet realizacji
 
@@ -289,6 +287,8 @@ W każdej fazie:
 | engine/BuildTools.ts | 300 | Build/edit tools (select/move/rotate/scale gizmos) |
 | ui/LandTools.ts | 320 | Land/parcel management (buy/sell/subdivide/terraform) |
 | ui/WorldMap.ts | 350 | World map with region grid, zoom/pan, teleport |
+| ui/NotecardEditor.ts | 180 | Notecard text editor with save/modify tracking |
+| ui/SnapshotTools.ts | 320 | Screenshot + TasiaFeed upload |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
