@@ -1,7 +1,7 @@
 # I-Grid Viewer — Plan rozwoju do pełnego Firestorm
 
 ## Status obecny
-✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics)**
+✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API**
 
 ## FAZA 1 — Świat żyje (wizualnie)
 
@@ -31,11 +31,12 @@
 - Plik: `src/Client/src/engine/FlexibleRenderer.ts`
 
 ### 1.4 Sound Effects
-- [x] 3D positional audio via Web Audio API — `SoundManager.ts` (224 linii): HRTF PannerNode, distanceModel, AudioBuffer cache
-- [x] Serwer: AttachedSound + PreloadSound events — `ViewerHub.cs` nasłuchuje `client.Sound.AttachedSound` i `client.Sound.PreloadSound`, forwarduje via SignalR
-- [ ] Ambient sounds (region environment)
-- [ ] Object sounds full integration (PreloadSound, AttachedSound auto-trigger na obiekcie)
-- [ ] Footstep sounds
+- [x] 3D positional audio via Web Audio API — `SoundManager.ts` (350 linii): HRTF PannerNode, AudioBuffer cache
+- [x] Ambient sounds (region environment) — `playAmbient()` API, non-positional, loops forever
+- [x] Object sounds (PreloadSound, AttachedSound events) — position tracked from ObjectUpdate, auto-follows object
+- [x] Footstep sounds — procedural synthesis (thump + noise), 300ms cooldown, `setMoving()` API
+- [x] Object sound position tracking — `updateSoundPosition()` called on every ObjectUpdate
+- [x] Master volume control — `setMasterVolume()` API
 - Plik: `src/Client/src/engine/SoundManager.ts`
 - Serwer: `client.Self.ChatFromSimulator` + `AttachedSound` events
 
@@ -222,14 +223,14 @@
 | 1.1 Environment | 7/7 | 7 | **100%** ✅ |
 | 1.2 Particles | 4/4 | 4 | **100%** ✅ |
 | 1.3 Flexi Prims | 3/3 | 3 | **100%** ✅ |
-| 1.4 Sound | 2/5 | 5 | 40% |
-| **FAZA 1** | **16/18** | **18** | **89%** |
+| 1.4 Sound | 6/6 | 6 | **100%** ✅ |
+| **FAZA 1** | **20/20** | **20** | **100%** ✅ |
 | Faza 2 | 0/11 | 11 | 0% |
 | Faza 3 | 0/16 | 16 | 0% |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **16/81** | **81** | **20%** |
+| **ŁĄCZNIE** | **20/81** | **81** | **25%** |
 
 ## Priorytet realizacji
 
@@ -241,7 +242,7 @@ W każdej fazie:
 3. Naprawiam bugi
 4. Dopiero przechodzę dalej
 
-**Następne do roboty**: 1.4 reszta Sound (ambient, footsteps, object sounds)
+**Następne do roboty**: FAZA 2 — Avatar Animations (2.1)
 
 **Testy**: Każda zmiana sprawdzana przez:
 - Konsolę przeglądarki (F12)
