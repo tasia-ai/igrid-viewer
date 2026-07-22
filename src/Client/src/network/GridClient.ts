@@ -20,6 +20,7 @@ import { AppearanceEditor } from '../ui/AppearanceEditor';
 import { HUDRenderer } from '../engine/HUDRenderer';
 import { SearchPanel, type SearchCategory, type SearchResult } from '../ui/SearchPanel';
 import { MediaManager } from '../engine/MediaManager';
+import { BuildTools, type BuildTool, type SelectedObject } from '../engine/BuildTools';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -46,6 +47,7 @@ export class GridClient {
   public hudRenderer: HUDRenderer;
   public searchPanel: SearchPanel;
   public mediaManager: MediaManager;
+  public buildTools: BuildTools;
   private _connected = false;
 
   public get connected(): boolean {
@@ -89,6 +91,10 @@ export class GridClient {
       onResultClick: (result) => this.handleSearchResultClick(result),
     });
     this.mediaManager = new MediaManager();
+    this.buildTools = new BuildTools(sceneManager.scene, sceneManager.camera, sceneManager.renderer);
+    this.buildTools.setCallbacks({
+      onEditProperty: (objectId, property, value) => this.connection?.invoke('SetObjectProperty', objectId, property, value),
+    });
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
       this.handleInteraction(result, type);
@@ -565,6 +571,7 @@ export class GridClient {
     this.hudRenderer.dispose();
     this.searchPanel.dispose();
     this.mediaManager.dispose();
+    this.buildTools.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
