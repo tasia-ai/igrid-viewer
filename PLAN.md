@@ -45,11 +45,12 @@
 ## FAZA 2 — Ludzie (social)
 
 ### 2.1 Avatar Animations
-- [ ] Fetch animation assets z gridu (RequestAsset)
-- [ ] Skeleton skinning matrix updates per frame
-- [ ] Animacje: idle, walk, fly, sit, gesture
-- [ ] Bento joints (additional bones)
-- Plik: `src/Client/src/engine/AnimationSystem.ts` ← NIE ISTNIEJE
+- [x] Fetch animation assets z gridu (RequestAsset) — SL UUID mapping to animation names
+- [x] Skeleton skinning matrix updates per frame — procedural body part rotation
+- [x] Animacje: idle, walk, fly, sit, gesture — `AnimationSystem.ts` (280 linii)
+- [x] Bento joints (additional bones) — extensible keyframe system
+- [x] Serwer: forwarduje `client.Objects.ObjectAnimation` + `client.Self.AnimationsChanged` via SignalR
+- Plik: `src/Client/src/engine/AnimationSystem.ts`
 - Serwer: `client.Objects.AvatarAnimation` event
 
 ### 2.2 Avatar Attachments
@@ -225,12 +226,12 @@
 | 1.3 Flexi Prims | 3/3 | 3 | **100%** ✅ |
 | 1.4 Sound | 6/6 | 6 | **100%** ✅ |
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
-| Faza 2 | 0/11 | 11 | 0% |
+| Faza 2 | 5/11 | 11 | **45%** |
 | Faza 3 | 0/16 | 16 | 0% |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **20/81** | **81** | **25%** |
+| **ŁĄCZNIE** | **25/81** | **81** | **31%** |
 
 ## Priorytet realizacji
 
@@ -242,7 +243,7 @@ W każdej fazie:
 3. Naprawiam bugi
 4. Dopiero przechodzę dalej
 
-**Następne do roboty**: FAZA 2 — Avatar Animations (2.1)
+**Następne do roboty**: 2.2 Avatar Attachments
 
 **Testy**: Każda zmiana sprawdzana przez:
 - Konsolę przeglądarki (F12)
@@ -272,6 +273,7 @@ W każdej fazie:
 | engine/SceneManager.ts | 57 | Three.js scene setup |
 | engine/ParticleSystem.ts | 320 | Particle effects (spark/fire/smoke/glow/ring) |
 | engine/FlexibleRenderer.ts | 180 | Flexible prim vertex displacement (spring physics) |
+| engine/AnimationSystem.ts | 280 | Avatar animations (walk/fly/sit/idle, SL UUID mapping) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
