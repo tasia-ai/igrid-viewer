@@ -148,6 +148,15 @@
     ::-webkit-scrollbar { width:4px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:2px; }
+
+    /* TOOLBAR */
+    .tool-btn {
+      width:36px; height:36px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+      border-radius:6px; cursor:pointer; font-size:16px; color:#aab;
+      display:flex; align-items:center; justify-content:center; transition:all 0.15s;
+    }
+    .tool-btn:hover { background:rgba(100,160,220,0.2); color:#fff; border-color:rgba(100,160,220,0.4); }
+    .tool-btn.active { background:rgba(100,160,220,0.3); color:#6ab0ff; border-color:#6ab0ff; }
   </style>
 </head>
 <body>
@@ -274,6 +283,23 @@
       <input id="chat-input" placeholder="Chat..." autocomplete="off">
       <button id="chat-send" class="chat-send">Send</button>
     </div>
+  </div>
+
+  <!-- TOOLBAR SIDEBAR -->
+  <div id="toolbar" style="display:none;position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:30;flex-direction:column;gap:3px;background:rgba(15,20,30,0.85);border-radius:8px;padding:4px;border:1px solid rgba(100,160,220,0.2)">
+    <button class="tool-btn" data-tool="search" title="Search (F3)">🔍</button>
+    <button class="tool-btn" data-tool="inventory" title="Inventory (I)">📦</button>
+    <button class="tool-btn" data-tool="build" title="Build (B)">🔨</button>
+    <button class="tool-btn" data-tool="land" title="Land">🌍</button>
+    <button class="tool-btn" data-tool="map" title="World Map (M)">🗺️</button>
+    <button class="tool-btn" data-tool="profile" title="Profile (P)">👤</button>
+    <button class="tool-btn" data-tool="groups" title="Groups (G)">👥</button>
+    <button class="tool-btn" data-tool="appearance" title="Appearance (A)">🎨</button>
+    <button class="tool-btn" data-tool="script" title="Script Editor (F5)">📝</button>
+    <button class="tool-btn" data-tool="notecard" title="Notepad">📋</button>
+    <button class="tool-btn" data-tool="upload" title="Upload (U)">⬆️</button>
+    <button class="tool-btn" data-tool="snapshot" title="Snapshot (F12)">📸</button>
+    <button class="tool-btn" data-tool="voice" title="Voice Chat">🎙️</button>
   </div>
 
   <!-- TELEPORT BAR -->

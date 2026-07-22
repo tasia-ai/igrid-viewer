@@ -174,6 +174,10 @@ export class ProfilePanel {
     return this.panel !== null;
   }
 
+  toggle(): void {
+    if (this.panel) this.hide();
+  }
+
   /**
    * Dispose and clean up.
    */

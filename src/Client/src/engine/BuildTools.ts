@@ -256,6 +256,12 @@ export class BuildTools {
     if (this.scaleGizmo) this.scaleGizmo.visible = this.currentTool === 'scale';
   }
 
+  toggle(): void {
+    if (!this._active) { this._active = true; }
+    else { this._active = false; this.deselect(); }
+  }
+  private _active = false;
+
   dispose(): void {
     this.scene.remove(this.gizmoGroup);
     this.deselect();

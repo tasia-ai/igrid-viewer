@@ -200,11 +200,13 @@ function showWorldUI() {
   chatWindow.style.display = 'flex';
   teleportBar.style.display = 'block';
   document.getElementById('right-panel')!.style.display = 'block';
+  document.getElementById('toolbar')!.style.display = 'flex';
 }
 function hideWorldUI() {
   [topBar, cameraPanel, chatWindow, teleportBar].forEach(el => el.style.display = 'none');
   document.getElementById('right-panel')!.style.display = 'none';
   document.getElementById('im-window')!.style.display = 'none';
+  document.getElementById('toolbar')!.style.display = 'none';
 }
 
 // === CONNECT ===
@@ -463,3 +465,71 @@ function addIMMessage(from: string, message: string, fromId?: string) {
 }
 
 function esc(s: string): string { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// === TOOLBAR ===
+const toolbar = document.getElementById('toolbar')!;
+toolbar.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!gridClient) return;
+    const tool = (btn as HTMLElement).dataset.tool;
+    switch (tool) {
+      case 'search': gridClient.searchPanel.toggle(); break;
+      case 'inventory': gridClient.inventoryPanel.toggle(); break;
+      case 'build': gridClient.buildTools.toggle(); break;
+      case 'land': gridClient.landTools.toggle(); break;
+      case 'map': gridClient.worldMap.toggle(); break;
+      case 'profile': gridClient.profilePanel.toggle(); break;
+      case 'groups': gridClient.groupPanel.toggle(); break;
+      case 'appearance': gridClient.appearanceEditor.toggle(); break;
+      case 'script': gridClient.scriptEditor.toggle(); break;
+      case 'notecard': gridClient.notecardEditor.toggle(); break;
+      case 'upload': gridClient.uploadTools.toggle(); break;
+      case 'snapshot': gridClient.snapshotTools.toggle(); break;
+      case 'voice': gridClient.voiceChat.toggleSettings(); break;
+    }
+  });
+});
+
+// === KEYBOARD SHORTCUTS ===
+document.addEventListener('keydown', (e) => {
+  if (!gridClient) return;
+  // Don't capture when typing in inputs
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+  switch (e.key) {
+    case 'Escape':
+      gridClient.searchPanel.hide?.();
+      gridClient.inventoryPanel.hide?.();
+      gridClient.buildTools.toggle?.();
+      gridClient.landTools.hide?.();
+      gridClient.worldMap.hide?.();
+      gridClient.profilePanel.hide?.();
+      gridClient.groupPanel.hide?.();
+      gridClient.appearanceEditor.hide?.();
+      gridClient.scriptEditor.hide?.();
+      gridClient.notecardEditor.hide?.();
+      gridClient.uploadTools.hide?.();
+      gridClient.snapshotTools.hide?.();
+      gridClient.voiceChat.toggleSettings?.(); gridClient.voiceChat.toggleSettings?.();
+      break;
+    case 'i': if (!e.ctrlKey && !e.metaKey) { gridClient.inventoryPanel.toggle(); e.preventDefault(); } break;
+    case 'b': gridClient.buildTools.toggle(); e.preventDefault(); break;
+    case 'm': gridClient.worldMap.toggle(); e.preventDefault(); break;
+    case 'p': gridClient.profilePanel.toggle(); e.preventDefault(); break;
+    case 'g': gridClient.groupPanel.toggle(); e.preventDefault(); break;
+    case 'a': gridClient.appearanceEditor.toggle(); e.preventDefault(); break;
+    case 'u': gridClient.uploadTools.toggle(); e.preventDefault(); break;
+    case 'F3': gridClient.searchPanel.toggle(); e.preventDefault(); break;
+    case 'F5': gridClient.scriptEditor.toggle(); e.preventDefault(); break;
+    case 'F12': gridClient.snapshotTools.toggle(); e.preventDefault(); break;
+  }
+});
+
+// === VOICE CHAT STATUS INDICATOR ===
+// Show voice status dot once connected
+// (initialized after avatar connects)
+const voiceObserver = new MutationObserver(() => {
+  if (gridClient?.voiceChat && !document.getElementById('voice-status')) {
+    gridClient.voiceChat.createStatusIndicator(document.body);
+  }
+});
+voiceObserver.observe(document.body, { childList: true, subtree: true });
