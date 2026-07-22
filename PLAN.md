@@ -1,7 +1,7 @@
 # I-Grid Viewer — Plan rozwoju do pełnego Firestorm
 
 ## Status obecny
-✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping)**
+✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping), avatar attachments (58 SL attachment points), profile cards, group system (list/chat/notices)**
 
 ## FAZA 1 — Świat żyje (wizualnie)
 
@@ -67,12 +67,12 @@
 - Serwer: `RequestProfile` hub method fetches AvatarProperties via LibreMetaverse
 
 ### 2.4 Group System
-- [ ] Group list (Groups tab w contacts)
-- [ ] Group chat (group channel)
-- [ ] Group title display
-- [ ] Group notices
-- Plik: `src/Client/src/ui/GroupPanel.ts` ← NIE ISTNIEJE
-- Serwer: `client.Groups` events
+- [x] Group list (Groups tab w contacts) — `GroupPanel.ts` (310 linii): tabbed UI with list/notices/chat
+- [x] Group chat (group channel) — server forwards ChatFromSimulator events via SignalR
+- [x] Group title display — active group title displayed in panel
+- [x] Group notices — server forwards GroupNoticesListReply events
+- Plik: `src/Client/src/ui/GroupPanel.ts`
+- Serwer: `client.Groups.CurrentGroups` + `client.Groups.GroupNoticesListReply` + `client.Self.ChatFromSimulator`
 
 ---
 
@@ -227,12 +227,12 @@
 | 1.3 Flexi Prims | 3/3 | 3 | **100%** ✅ |
 | 1.4 Sound | 6/6 | 6 | **100%** ✅ |
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
-| Faza 2 | 11/11 | 11 | **100%** ✅ |
+| Faza 2 | 15/15 | 15 | **100%** ✅ |
 | Faza 3 | 0/16 | 16 | 0% |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **31/81** | **81** | **38%** |
+| **ŁĄCZNIE** | **35/85** | **85** | **41%** |
 
 ## Priorytet realizacji
 
@@ -244,7 +244,7 @@ W każdej fazie:
 3. Naprawiam bugi
 4. Dopiero przechodzę dalej
 
-**Następne do roboty**: FAZA 3 — Komunikacja (3.1 Group System)
+**Następne do roboty**: FAZA 3 — Interakcja (3.1 Object Interaction)
 
 **Testy**: Każda zmiana sprawdzana przez:
 - Konsolę przeglądarki (F12)
@@ -277,6 +277,7 @@ W każdej fazie:
 | engine/AnimationSystem.ts | 280 | Avatar animations (walk/fly/sit/idle, SL UUID mapping) |
 | engine/AttachmentRenderer.ts | 280 | Avatar attachments (58 SL attachment points) |
 | ui/ProfilePanel.ts | 180 | Avatar profile card popup |
+| ui/GroupPanel.ts | 310 | Group list, chat, and notices |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
