@@ -3,6 +3,7 @@ import * as THREE from 'three';
 /**
  * Environment system for I-Grid viewer.
  * Sky gradient shader, day/night cycle, PBR water, fog.
+ * Enhanced with sun disc, sun glow/halo, and horizon glow.
  */
 export class Environment {
   public scene: THREE.Scene;
@@ -16,12 +17,15 @@ export class Environment {
   constructor(scene: THREE.Scene) {
     this.scene = scene;
 
-    // Sky dome with gradient shader
+    // Sky dome with gradient shader (enhanced with sun disc, glow, horizon glow)
     const skyGeo = new THREE.SphereGeometry(4000, 32, 16);
     const skyMat = new THREE.ShaderMaterial({
       uniforms: {
-        topColor: { value: new THREE.Color(0x0077ff) },
-        bottomColor: { value: new THREE.Color(0xffffff) },
+        topColor:     { value: new THREE.Color(0x0077ff) },
+        midColor:     { value: new THREE.Color(0x87ceeb) },
+        bottomColor:  { value: new THREE.Color(0xffffff) },
+        sunDirection: { value: new THREE.Vector3(0.5, 0.9, 0.5).normalize() },
+        sunIntensity: { value: 1.0 },
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -33,11 +37,50 @@ export class Environment {
       `,
       fragmentShader: `
         uniform vec3 topColor;
+        uniform vec3 midColor;
         uniform vec3 bottomColor;
+        uniform vec3 sunDirection;
+        uniform float sunIntensity;
         varying vec3 vWorldPosition;
+
         void main() {
-          float h = normalize(vWorldPosition).y;
-          gl_FragColor = vec4(mix(bottomColor, topColor, max(h, 0.0)), 1.0);
+          vec3 dir = normalize(vWorldPosition);
+
+          // ---- 3-stop sky gradient (zenith → mid → horizon) ----
+          float h = dir.y;
+          // Clamp horizon band: map [-0.1 .. 0.3] to [0 .. 1]
+          float horizonBlend = smoothstep(-0.1, 0.3, h);
+          // Upper blend: map [0.3 .. 1.0] to [0 .. 1]
+          float upperBlend = smoothstep(0.3, 1.0, h);
+
+          vec3 skyColor = mix(midColor, topColor, upperBlend);
+          // Below horizon fade into bottomColor
+          skyColor = mix(bottomColor, skyColor, horizonBlend);
+
+          // ---- Sun disc ----
+          float sunDot = dot(dir, sunDirection);
+          // Sharp disc: smooth edge just below 1.0
+          float sunDisc = smoothstep(0.9995, 0.9998, sunDot);
+          vec3 sunColor = vec3(1.0, 0.98, 0.85);
+          skyColor += sunColor * sunDisc * 2.0 * sunIntensity;
+
+          // ---- Sun glow / halo ----
+          // Wider exponential falloff around the sun
+          float glow = pow(max(sunDot, 0.0), 64.0);
+          skyColor += sunColor * glow * 0.6 * sunIntensity;
+
+          // Broad outer halo
+          float halo = pow(max(sunDot, 0.0), 8.0);
+          skyColor += vec3(1.0, 0.9, 0.7) * halo * 0.25 * sunIntensity;
+
+          // ---- Horizon glow (warm orange, strongest when sun is low) ----
+          float horizonFactor = exp(-abs(h) * 6.0);
+          // Horizon glow is brightest when sun is near the horizon
+          float sunNearHorizon = 1.0 - abs(sunDirection.y);
+          vec3 horizonGlowColor = vec3(1.0, 0.55, 0.15);
+          skyColor += horizonGlowColor * horizonFactor * sunNearHorizon * 0.5 * sunIntensity;
+
+          gl_FragColor = vec4(skyColor, 1.0);
         }
       `,
       side: THREE.BackSide,
@@ -95,11 +138,21 @@ export class Environment {
     const warmth = 1 - Math.abs(this.timeOfDay - 0.5) * 2;
     this.sunLight.color.setHSL(0.1 - warmth * 0.05, 0.3 + warmth * 0.5, 0.8 + warmth * 0.2);
 
-    // Sky
+    // Sky uniforms
     const skyMat = this.skyDome.material as THREE.ShaderMaterial;
     const brightness = Math.max(0.1, Math.sin(angle) * 0.7);
+
+    // 3-stop gradient colors
     skyMat.uniforms.topColor.value.setHSL(0.6, 0.7, brightness);
+    skyMat.uniforms.midColor.value.setHSL(0.55, 0.5, brightness * 0.7 + 0.15);
     skyMat.uniforms.bottomColor.value.setHSL(0.1, 0.5, brightness * 0.5);
+
+    // Sun direction for the sky shader (normalized)
+    const sunDir = new THREE.Vector3(100, sunY, sunZ).normalize();
+    skyMat.uniforms.sunDirection.value.copy(sunDir);
+
+    // Sun visibility fades at night
+    skyMat.uniforms.sunIntensity.value = Math.max(0, Math.sin(angle) * 1.5);
 
     // Ambient
     this.ambientLight.intensity = 0.3 + Math.sin(angle) * 0.5;
