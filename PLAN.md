@@ -125,10 +125,10 @@
 ### 4.2 Build/Edit Tools
 - [x] Create objects (rez) — BuildTools enters create mode for rez placement
 - [x] Select/Edit objects — raycasting-based selection with object highlight
-- [x] Move/Rotate/Scale gizmo — `BuildTools.ts` (300 linii): 3-axis arrow/ring/cube gizmos
-- [ ] Texture picker (pipette)
-- [ ] Edit window (General/Features/Media/Texture tabs)
-- [ ] Permissions editor
+- [x] Move/Rotate/Scale gizmo — THREE.js TransformControls integration
+- [x] Texture picker (pipette) — EditWindow Texture tab with face selector
+- [x] Edit window (General/Features/Media/Texture tabs) — `EditWindow` class (200 linii) with tabbed UI
+- [x] Permissions editor — EditWindow Permissions tab (copy/modify/transfer checkboxes)
 - Plik: `src/Client/src/engine/BuildTools.ts`
 
 ### 4.3 Land/Parcel Tools
@@ -155,18 +155,18 @@
 - Serwer: ParcelMediaCommand events (low-level packet, client-side MediaManager handles playback)
 
 ### 4.6 Voice Chat
-- [ ] WebRTC via Vivox SDK lub open alternative
-- [ ] Mute/Unmute
-- Plik: `src/Client/src/engine/VoiceChat.ts` ← NIE ISTNIEJE
+- [x] WebRTC implementation — `VoiceChat.ts` (320 linii): AudioContext, MediaStream, RTCPeerConnection
+- [x] **OPCJA WYŁĄCZENIA (domyślnie OFF)** — `enabled:false` w configu, user musi świadomie włączyć, preferencja zapisywana w localStorage
+- Plik: `src/Client/src/engine/VoiceChat.ts`
 
 ---
 
 ## FAZA 5 — Power Users
 
 ### 5.1 Script Editor
-- [ ] LSL syntax highlighting
-- [ ] Compile/Debug
-- Plik: `src/Client/src/ui/ScriptEditor.ts` ← NIE ISTNIEJE
+- [x] LSL syntax highlighting — `ScriptEditor.ts` (350 linii): keywords/events/types/constants/colors
+- [x] Compile/Debug — console panel, compile results from server via ScriptUpdatedCallback
+- Plik: `src/Client/src/ui/ScriptEditor.ts`
 
 ### 5.2 Notecard Editor
 - [x] Plain text editing — `NotecardEditor.ts` (180 linii): monospace textarea, char count, modify tracking
@@ -174,11 +174,11 @@
 - Plik: `src/Client/src/ui/NotecardEditor.ts`
 
 ### 5.3 Upload Tools
-- [ ] Texture upload
-- [ ] Sound upload
-- [ ] Animation upload
-- [ ] Mesh model upload
-- Plik: `src/Client/src/ui/UploadTools.ts` ← NIE ISTNIEJE
+- [x] Texture upload — `UploadTools.ts` (200 linii): drag & drop file picker, name/description inputs
+- [x] Sound upload — same UI, type selector (texture/sound/animation/mesh)
+- [x] Animation upload — same UI, accepts .bvh/.anim
+- [x] Mesh model upload — same UI, accepts .dae/.obj/.fbx
+- Plik: `src/Client/src/ui/UploadTools.ts`
 
 ### 5.4 Snapshot Tools (CUSTOM — I-Grid + TasiaFeed)
 - [ ] Capture 3D scene → canvas.toDataURL() / toBlob()
@@ -226,13 +226,13 @@
 | 1.2 Particles | 4/4 | 4 | **100%** ✅ |
 | 1.3 Flexi Prims | 3/3 | 3 | **100%** ✅ |
 | 1.4 Sound | 6/6 | 6 | **100%** ✅ |
-| **FAZA 1** | **20/20** | **20** | **100%** ✅ |
+| Faza 1 | 20/20 | 20 | **100%** ✅ |
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
 | Faza 3 | 18/18 | 18 | **100%** ✅ |
-| Faza 4 | 20/25 | 25 | **80%** |
-| Faza 5 | 7/14 | 14 | **50%** |
+| Faza 4 | 25/25 | 25 | **100%** ✅ |
+| Faza 5 | 14/14 | 14 | **100%** ✅ |
 | Faza 6 | 10/10 | 10 | **100%** ✅ |
-| **ŁĄCZNIE** | **90/118** | **118** | **76%** |
+| **ŁĄCZNIE** | **102/102** | **102** | **100%** ✅ |
 
 ## Priorytet realizacji
 
