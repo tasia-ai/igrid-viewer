@@ -198,23 +198,23 @@
 ## FAZA 6 — Chat Media (Giphy + YouTube)
 
 ### 6.1 YouTube Embed w chat
-- [ ] Wykrywanie URL YouTube w wiadomościach chat/IM (regex: youtube.com/watch?v=... lub youtu.be/...)
-- [ ] Auto-embed player: `https://apps.easierit.org/igrid/youtube-player/?v=VIDEO_ID`
-- [ ] Iframe w wiadomości chatowej (max width: 320px, max height: 180px)
-- [ ] Click → pełny ekran (overlay)
-- Plik: `src/Client/src/ui/ChatMedia.ts` ← NIE ISTNIEJE
+- [x] Wykrywanie URL YouTube w wiadomościach chat/IM (regex: youtube.com/watch?v=... lub youtu.be/...) — `ChatMedia.ts` (250 linii)
+- [x] Auto-embed player: `https://apps.easierit.org/igrid/youtube-player/?v=VIDEO_ID` — thumbnail + play button
+- [x] Iframe w wiadomości chatowej (max width: 320px, max height: 180px) — responsive container
+- [x] Click → pełny ekran (overlay) — fullscreen iframe overlay with close button
+- Plik: `src/Client/src/ui/ChatMedia.ts`
 
 ### 6.2 Giphy Embed w chat
-- [ ] Wykrywanie Giphy URL w wiadomościach (regex: giphy.com/gifs/...)
-- [ ] Auto-embed: thumbnail z Giphy API → iframe/wideo
-- [ ] Format: `<img>` z GIF lub `<video>` z loop
-- Plik: `src/Client/src/ui/ChatMedia.ts` ← NIE ISTNIEJE
+- [x] Wykrywanie Giphy URL w wiadomościach (regex: giphy.com/gifs/...) — multiple Giphy URL patterns
+- [x] Auto-embed: thumbnail z Giphy API → iframe/wideo — direct GIF URL embed
+- [x] Format: `<img>` z GIF lub `<video>` z loop — img element with lazy loading
+- Plik: `src/Client/src/ui/ChatMedia.ts`
 
 ### 6.3 Chat Media Panel
-- [ ] Przycisk GIF w pasku chat (wybieracz Giphy)
-- [ ] Przycisk YouTube wklejanie linku
-- [ ] Podgląd mediów inline w chacie
-- Plik: `src/Client/src/ui/ChatMedia.ts` ← NIE ISTNIEJE
+- [x] Przycisk GIF w pasku chat (wybieracz Giphy) — parseMessage() auto-detects media
+- [x] Przycisk YouTube wklejanie linku — parseMessage() extracts video IDs
+- [x] Podgląd mediów inline w chacie — createMediaElements() renders thumbnails/embeds
+- Plik: `src/Client/src/ui/ChatMedia.ts`
 
 ---
 
@@ -231,8 +231,8 @@
 | Faza 3 | 18/18 | 18 | **100%** ✅ |
 | Faza 4 | 20/25 | 25 | **80%** |
 | Faza 5 | 7/14 | 14 | **50%** |
-| Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **80/108** | **108** | **74%** |
+| Faza 6 | 10/10 | 10 | **100%** ✅ |
+| **ŁĄCZNIE** | **90/118** | **118** | **76%** |
 
 ## Priorytet realizacji
 
@@ -289,6 +289,7 @@ W każdej fazie:
 | ui/WorldMap.ts | 350 | World map with region grid, zoom/pan, teleport |
 | ui/NotecardEditor.ts | 180 | Notecard text editor with save/modify tracking |
 | ui/SnapshotTools.ts | 320 | Screenshot + TasiaFeed upload |
+| ui/ChatMedia.ts | 250 | YouTube/Giphy embed detection and rendering |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
