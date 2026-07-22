@@ -115,11 +115,12 @@
 ## FAZA 4 — Tworzenie i odkrywanie
 
 ### 4.1 Search System
-- [ ] People search (`DirectoryManager.StartPeopleSearch`)
-- [ ] Places search (`DirectoryManager.StartPlacesSearch`)
-- [ ] Events search
-- [ ] Classifieds
-- Plik: `src/Client/src/ui/SearchPanel.ts` ← NIE ISTNIEJE
+- [x] People search (`DirectoryManager.StartPeopleSearch`) — `SearchPanel.ts` (350 linii): tabbed search UI with 5 categories
+- [x] Places search (`DirectoryManager.StartPlacesSearch`) — server forwards DirPlacesReply events
+- [x] Events search — server forwards DirEventsReply events
+- [x] Classifieds — server forwards DirClassifiedsReply events
+- Plik: `src/Client/src/ui/SearchPanel.ts`
+- Serwer: `client.Directory` API (SearchPeople/Places/Events/Groups/Classifieds hub methods)
 
 ### 4.2 Build/Edit Tools
 - [ ] Create objects (rez)
@@ -230,10 +231,10 @@
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
 | Faza 3 | 18/18 | 18 | **100%** ✅ |
-| Faza 4 | 0/18 | 18 | 0% |
+| Faza 4 | 4/18 | 18 | **22%** |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **53/85** | **85** | **62%** |
+| **ŁĄCZNIE** | **57/85** | **85** | **67%** |
 
 ## Priorytet realizacji
 
@@ -283,6 +284,7 @@ W każdej fazie:
 | engine/InteractionManager.ts | 130 | Object raycasting + sit/touch/pay |
 | ui/AppearanceEditor.ts | 400 | Avatar appearance editor (wearables + visual params) |
 | engine/HUDRenderer.ts | 210 | HUD attachment rendering (orthographic camera pass) |
+| ui/SearchPanel.ts | 350 | Search UI (people/places/events/groups/classifieds) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
