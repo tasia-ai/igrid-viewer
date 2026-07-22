@@ -22,6 +22,7 @@ import { SearchPanel, type SearchCategory, type SearchResult } from '../ui/Searc
 import { MediaManager } from '../engine/MediaManager';
 import { BuildTools, type BuildTool, type SelectedObject } from '../engine/BuildTools';
 import { LandTools, type ParcelInfo } from '../ui/LandTools';
+import { WorldMap } from '../ui/WorldMap';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -50,6 +51,7 @@ export class GridClient {
   public mediaManager: MediaManager;
   public buildTools: BuildTools;
   public landTools: LandTools;
+  public worldMap: WorldMap;
   private _connected = false;
 
   public get connected(): boolean {
@@ -99,6 +101,9 @@ export class GridClient {
     });
     this.landTools = new LandTools({
       onAction: (action, data) => this.connection?.invoke('LandAction', action, data),
+    });
+    this.worldMap = new WorldMap({
+      onTeleport: (regionId, _x, _y) => this.teleport(regionId),
     });
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
@@ -578,6 +583,7 @@ export class GridClient {
     this.mediaManager.dispose();
     this.buildTools.dispose();
     this.landTools.dispose();
+    this.worldMap.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
