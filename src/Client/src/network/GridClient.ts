@@ -17,6 +17,7 @@ import { GroupPanel, type GroupData } from '../ui/GroupPanel';
 import { InteractionManager, type InteractionResult, type InteractionType } from '../engine/InteractionManager';
 import { InventoryPanel, type InventoryFolder, type InventoryItem, type InventoryAction } from '../ui/InventoryPanel';
 import { AppearanceEditor } from '../ui/AppearanceEditor';
+import { HUDRenderer } from '../engine/HUDRenderer';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -40,6 +41,7 @@ export class GridClient {
   public interactionManager: InteractionManager;
   public inventoryPanel: InventoryPanel;
   public appearanceEditor: AppearanceEditor;
+  public hudRenderer: HUDRenderer;
   private _connected = false;
 
   public get connected(): boolean {
@@ -77,6 +79,7 @@ export class GridClient {
       onParamChange: (paramId, value) => this.connection?.invoke('SetVisualParam', paramId, value),
       onBake: () => this.connection?.invoke('BakeAppearance'),
     });
+    this.hudRenderer = new HUDRenderer(sceneManager.scene, sceneManager.renderer);
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
       this.handleInteraction(result, type);
@@ -511,6 +514,7 @@ export class GridClient {
     this.interactionManager.dispose();
     this.inventoryPanel.dispose();
     this.appearanceEditor.dispose();
+    this.hudRenderer.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
