@@ -180,7 +180,7 @@ drawDistSlider?.addEventListener('input', () => {
   if (sceneManager) {
     sceneManager.camera.far = dist * 2;
     sceneManager.camera.updateProjectionMatrix();
-    sceneManager.scene.fog = new THREE.Fog(0x87ceeb, dist * 0.8, dist * 2);
+    sceneManager.environment.setDrawDistance(dist);
   }
 });
 zoomSlider.addEventListener('input', () => { gridClient?.camera?.setZoom(Number(zoomSlider.value)); });

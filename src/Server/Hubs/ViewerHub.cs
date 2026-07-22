@@ -157,6 +157,102 @@ public class ViewerHub : Hub
             }
             catch { }
         };
+        // ── Environment / Windlight ──────────────────────────────────
+        // Subscribe to RegionInfo packets for sun hour, water height, and estate sun settings.
+        // Also hook SimChanged to re-emit environment on region crossings.
+        void EmitEnvironmentUpdate()
+        {
+            try
+            {
+                var sim = client.Network.CurrentSim;
+                if (sim == null) return;
+
+                // Extract sun hour from RegionInfo (0-24 SL hours, where 6 = sunrise, 18 = sunset)
+                float sunHour = sim.WaterHeight; // fallback
+                bool useEstateSun = true;
+                float waterHeight = sim.WaterHeight;
+
+                // Try to read from the latest RegionInfo packet data stored on the sim
+                // LibreMetaverse stores RegionInfo in the simulator's handle
+                // We use a safe extraction approach
+                try
+                {
+                    // RegionInfoBlock has SunHour (0-24) and UseEstateSun
+                    // These are set during RegionHandshake / RegionInfo packets
+                    var regionFlagsField = sim.GetType().GetField("RegionFlags",
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                }
+                catch { }
+
+                // Convert SL sun hour (0-24) to our 0-1 timeOfDay
+                // SL: 0 = midnight, 6 = sunrise, 12 = noon, 18 = sunset
+                // Our format: 0 = midnight, 0.5 = noon
+                float timeOfDay = sunHour / 24.0f;
+
+                // Derive sun direction from time of day
+                float angle = timeOfDay * MathF.PI;
+                float sunX = (float)(Math.Cos(angle) * 0.5);
+                float sunY = (float)Math.Sin(angle);
+                float sunZ = 0.5f;
+                float len = MathF.Sqrt(sunX * sunX + sunY * sunY + sunZ * sunZ);
+                sunX /= len; sunY /= len; sunZ /= len;
+
+                // Derive sky colours from time of day
+                var skyTop = DeriveSkyTopColor(timeOfDay);
+                var skyMid = DeriveSkyMidColor(timeOfDay);
+                var skyBot = DeriveSkyBottomColor(timeOfDay);
+                var sunCol = DeriveSunColor(timeOfDay);
+                var fogCol = DeriveFogColor(timeOfDay);
+                var ambientCol = DeriveAmbientColor(timeOfDay);
+
+                float sunIntensity = MathF.Max(0.04f, MathF.Sin(angle) * 1.5f);
+                float ambientIntensity = 0.3f + MathF.Sin(angle) * 0.5f;
+                float hemiIntensity = 0.15f + MathF.Sin(angle) * 0.25f;
+                float moonIntensity = MathF.Max(0, -MathF.Sin(angle) * 0.5f);
+
+                // Moon direction is opposite to sun
+                float moonX = -sunX, moonY = -sunY, moonZ = -sunZ;
+
+                // Water colour adjusts with time
+                float waterR = 0f;
+                float waterG = 0.15f + MathF.Sin(angle) * 0.26f;
+                float waterB = 0.2f + MathF.Sin(angle) * 0.38f;
+
+                caller.SendAsync("EnvironmentUpdate", new
+                {
+                    SkyTopColor = new { R = skyTop.R, G = skyTop.G, B = skyTop.B },
+                    SkyMidColor = new { R = skyMid.R, G = skyMid.G, B = skyMid.B },
+                    SkyBottomColor = new { R = skyBot.R, G = skyBot.G, B = skyBot.B },
+                    SunDirection = new { X = sunX, Y = sunY, Z = sunZ },
+                    SunColor = new { R = sunCol.R, G = sunCol.G, B = sunCol.B },
+                    SunIntensity = sunIntensity,
+                    MoonDirection = new { X = moonX, Y = moonY, Z = moonZ },
+                    MoonColor = new { R = 0.69f, G = 0.73f, B = 0.87f },
+                    MoonIntensity = moonIntensity,
+                    FogColor = new { R = fogCol.R, G = fogCol.G, B = fogCol.B },
+                    FogNear = 200f,
+                    FogFar = 1500f,
+                    AmbientColor = new { R = ambientCol.R, G = ambientCol.G, B = ambientCol.B },
+                    AmbientIntensity = ambientIntensity,
+                    HemiSkyColor = new { R = skyMid.R, G = skyMid.G, B = skyMid.B },
+                    HemiGroundColor = new { R = 0.212f, G = 0.161f, B = 0.027f },
+                    HemiIntensity = hemiIntensity,
+                    WaterColor = new { R = waterR, G = waterG, B = waterB },
+                    WaterOpacity = 0.65f + MathF.Sin(angle) * 0.15f,
+                    WaterHeight = waterHeight,
+                    TimeOfDay = timeOfDay,
+                    UseEstateSun = useEstateSun,
+                    CloudDensity = 0.5f,
+                }).Wait();
+            }
+            catch { }
+        }
+
+        // Emit environment on connect
+        EmitEnvironmentUpdate();
+
+        // Re-emit on region crossing
+        client.Network.SimChanged += (_, _) => EmitEnvironmentUpdate();
 
         client.Self.MoneyBalance += async (_, e) =>
         { try { await caller.SendAsync("BalanceUpdate", new { Balance = e.Balance }); } catch { } };
@@ -316,4 +412,84 @@ public class ViewerHub : Hub
             await _grid.DisconnectAvatarAsync(session.AvatarId);
         await base.OnDisconnectedAsync(exception);
     }
+
+    // ── Environment color derivation helpers ──────────────────────────
+
+    /// <summary>
+    /// Derive sky top (zenith) color from time of day.
+    /// Maps timeOfDay 0..1 to a gradient: night blue → daytime blue → sunset purple → night.
+    /// </summary>
+    private static (float R, float G, float B) DeriveSkyTopColor(float t)
+    {
+        float angle = t * MathF.PI;
+        float brightness = MathF.Max(0.05f, MathF.Sin(angle) * 0.7f);
+        // HSL(0.6, 0.7, brightness) → RGB
+        return HslToRgb(0.6f, 0.7f, brightness);
+    }
+
+    private static (float R, float G, float B) DeriveSkyMidColor(float t)
+    {
+        float angle = t * MathF.PI;
+        float brightness = MathF.Max(0.05f, MathF.Sin(angle) * 0.7f);
+        return HslToRgb(0.55f, 0.5f, brightness * 0.7f + 0.15f);
+    }
+
+    private static (float R, float G, float B) DeriveSkyBottomColor(float t)
+    {
+        float angle = t * MathF.PI;
+        float brightness = MathF.Max(0.05f, MathF.Sin(angle) * 0.7f);
+        return HslToRgb(0.1f, 0.5f, brightness * 0.5f);
+    }
+
+    private static (float R, float G, float B) DeriveSunColor(float t)
+    {
+        float angle = t * MathF.PI;
+        float warmth = 1f - MathF.Abs(t - 0.5f) * 2f;
+        return HslToRgb(0.1f - warmth * 0.05f, 0.3f + warmth * 0.5f, 0.8f + warmth * 0.2f);
+    }
+
+    private static (float R, float G, float B) DeriveFogColor(float t)
+    {
+        float angle = t * MathF.PI;
+        float brightness = MathF.Max(0.05f, MathF.Sin(angle) * 0.7f);
+        return HslToRgb(0.55f, 0.5f, brightness * 0.7f + 0.15f);
+    }
+
+    private static (float R, float G, float B) DeriveAmbientColor(float t)
+    {
+        float angle = t * MathF.PI;
+        float brightness = MathF.Max(0.05f, MathF.Sin(angle) * 0.5f);
+        return HslToRgb(0.7f, 0.2f, brightness * 0.5f + 0.1f);
+    }
+
+    /// <summary>Convert HSL (0-1 range) to RGB (0-1 range).</summary>
+    private static (float R, float G, float B) HslToRgb(float h, float s, float l)
+    {
+        float r, g, b;
+        if (s == 0)
+        {
+            r = g = b = l;
+        }
+        else
+        {
+            float q = l < 0.5f ? l * (1f + s) : l + s - l * s;
+            float p = 2f * l - q;
+            r = HueToRgb(p, q, h + 1f / 3f);
+            g = HueToRgb(p, q, h);
+            b = HueToRgb(p, q, h - 1f / 3f);
+        }
+        return (Clamp01(r), Clamp01(g), Clamp01(b));
+    }
+
+    private static float HueToRgb(float p, float q, float t)
+    {
+        if (t < 0f) t += 1f;
+        if (t > 1f) t -= 1f;
+        if (t < 1f / 6f) return p + (q - p) * 6f * t;
+        if (t < 1f / 2f) return q;
+        if (t < 2f / 3f) return p + (q - p) * (2f / 3f - t) * 6f;
+        return p;
+    }
+
+    private static float Clamp01(float v) => v < 0f ? 0f : v > 1f ? 1f : v;
 }

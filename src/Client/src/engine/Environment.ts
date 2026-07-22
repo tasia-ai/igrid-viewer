@@ -1,5 +1,130 @@
 import * as THREE from 'three';
 
+// ── WindlightSettings (matches OpenMetaverse format) ─────────────────
+
+/**
+ * Windlight / EEP settings transmitted from the server.
+ * Maps to the fields available in LibreMetaverse's RegionInfoPacket
+ * and the broader SecondLife Windlight / EEP specification.
+ */
+export interface WindlightSettings {
+  // -- Sky colours (RGB 0-1) --
+  skyTopColor:     { r: number; g: number; b: number };
+  skyMidColor:     { r: number; g: number; b: number };
+  skyBottomColor:  { r: number; g: number; b: number };
+
+  // -- Sun / Moon --
+  sunDirection:    { x: number; y: number; z: number };
+  sunColor:        { r: number; g: number; b: number };
+  sunIntensity:    number;
+  moonDirection:   { x: number; y: number; z: number };
+  moonColor:       { r: number; g: number; b: number };
+  moonIntensity:   number;
+
+  // -- Fog --
+  fogColor:        { r: number; g: number; b: number };
+  fogNear:         number;
+  fogFar:          number;
+
+  // -- Lighting --
+  ambientColor:    { r: number; g: number; b: number };
+  ambientIntensity: number;
+  hemiSkyColor:    { r: number; g: number; b: number };
+  hemiGroundColor: { r: number; g: number; b: number };
+  hemiIntensity:   number;
+
+  // -- Water --
+  waterColor:      { r: number; g: number; b: number };
+  waterOpacity:    number;
+  waterHeight:     number;
+
+  // -- Time --
+  /** 0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset */
+  timeOfDay:       number;
+  useEstateSun:    boolean;
+
+  // -- Cloud density (placeholder for future) --
+  cloudDensity:    number;
+}
+
+/** Helper: convert {r,g,b} 0-1 to THREE.Color */
+function vec3ToColor(v: { r: number; g: number; b: number }): THREE.Color {
+  return new THREE.Color(v.r, v.g, v.b);
+}
+
+/** Create a default daytime WindlightSettings. */
+export function defaultWindlightSettings(): WindlightSettings {
+  return {
+    skyTopColor:    { r: 0.0, g: 0.467, b: 1.0 },
+    skyMidColor:    { r: 0.529, g: 0.808, b: 0.922 },
+    skyBottomColor: { r: 1.0, g: 1.0, b: 1.0 },
+    sunDirection:   { x: 0.5, y: 0.9, z: 0.5 },
+    sunColor:       { r: 1.0, g: 0.957, b: 0.878 },
+    sunIntensity:   1.5,
+    moonDirection:  { x: -0.3, y: 0.8, z: -0.5 },
+    moonColor:      { r: 0.69, g: 0.73, b: 0.87 },
+    moonIntensity:  0.04,
+    fogColor:       { r: 0.529, g: 0.808, b: 0.922 },
+    fogNear:        200,
+    fogFar:         1500,
+    ambientColor:   { r: 0.376, g: 0.376, b: 0.502 },
+    ambientIntensity: 0.8,
+    hemiSkyColor:   { r: 0.529, g: 0.808, b: 0.922 },
+    hemiGroundColor:{ r: 0.212, g: 0.161, b: 0.027 },
+    hemiIntensity:  0.4,
+    waterColor:     { r: 0.0, g: 0.412, b: 0.58 },
+    waterOpacity:   0.65,
+    waterHeight:    20,
+    timeOfDay:      0.5,
+    useEstateSun:   true,
+    cloudDensity:   0.5,
+  };
+}
+
+/**
+ * Interpolate two WindlightSettings linearly.
+ * Useful for day/night cycle blending.
+ */
+export function lerpWindlightSettings(a: WindlightSettings, b: WindlightSettings, t: number): WindlightSettings {
+  const lerp3 = (ca: { r: number; g: number; b: number }, cb: { r: number; g: number; b: number }) => ({
+    r: ca.r + (cb.r - ca.r) * t,
+    g: ca.g + (cb.g - ca.g) * t,
+    b: ca.b + (cb.b - ca.b) * t,
+  });
+  const lerpV3 = (ca: { x: number; y: number; z: number }, cb: { x: number; y: number; z: number }) => ({
+    x: ca.x + (cb.x - ca.x) * t,
+    y: ca.y + (cb.y - ca.y) * t,
+    z: ca.z + (cb.z - ca.z) * t,
+  });
+  return {
+    skyTopColor:    lerp3(a.skyTopColor, b.skyTopColor),
+    skyMidColor:    lerp3(a.skyMidColor, b.skyMidColor),
+    skyBottomColor: lerp3(a.skyBottomColor, b.skyBottomColor),
+    sunDirection:   lerpV3(a.sunDirection, b.sunDirection),
+    sunColor:       lerp3(a.sunColor, b.sunColor),
+    sunIntensity:   a.sunIntensity + (b.sunIntensity - a.sunIntensity) * t,
+    moonDirection:  lerpV3(a.moonDirection, b.moonDirection),
+    moonColor:      lerp3(a.moonColor, b.moonColor),
+    moonIntensity:  a.moonIntensity + (b.moonIntensity - a.moonIntensity) * t,
+    fogColor:       lerp3(a.fogColor, b.fogColor),
+    fogNear:        a.fogNear + (b.fogNear - a.fogNear) * t,
+    fogFar:         a.fogFar + (b.fogFar - a.fogFar) * t,
+    ambientColor:   lerp3(a.ambientColor, b.ambientColor),
+    ambientIntensity: a.ambientIntensity + (b.ambientIntensity - a.ambientIntensity) * t,
+    hemiSkyColor:   lerp3(a.hemiSkyColor, b.hemiSkyColor),
+    hemiGroundColor:lerp3(a.hemiGroundColor, b.hemiGroundColor),
+    hemiIntensity:  a.hemiIntensity + (b.hemiIntensity - a.hemiIntensity) * t,
+    waterColor:     lerp3(a.waterColor, b.waterColor),
+    waterOpacity:   a.waterOpacity + (b.waterOpacity - a.waterOpacity) * t,
+    waterHeight:    a.waterHeight + (b.waterHeight - a.waterHeight) * t,
+    timeOfDay:      a.timeOfDay + (b.timeOfDay - a.timeOfDay) * t,
+    useEstateSun:   b.useEstateSun,
+    cloudDensity:   a.cloudDensity + (b.cloudDensity - a.cloudDensity) * t,
+  };
+}
+
+// ── Sky Preset ───────────────────────────────────────────────────────
+
 /**
  * Sky / environment preset definition.
  * Every field is explicit so setPreset can apply the whole look at once.
@@ -112,11 +237,13 @@ const SKY_PRESETS: Record<string, SkyPreset> = {
   },
 };
 
+// ── Environment class ────────────────────────────────────────────────
+
 /**
  * Environment system for I-Grid viewer.
- * Sky gradient shader, day/night cycle, PBR water, fog.
- * Enhanced with sun disc, sun glow/halo, and horizon glow.
- * Supports sky presets for quick environment switching.
+ * Sky gradient shader, day/night cycle, PBR water, fog, moon.
+ * Enhanced with sun disc, sun glow/halo, horizon glow, and moon disc.
+ * Supports sky presets and WindlightSettings from server.
  */
 export class Environment {
   public scene: THREE.Scene;
@@ -125,21 +252,39 @@ export class Environment {
   private hemiLight: THREE.HemisphereLight;
   private water: THREE.Mesh;
   private skyDome: THREE.Mesh;
+  private moonLight: THREE.DirectionalLight;
+  private moonDisc: THREE.Mesh;
   private timeOfDay = 0.5;
   private currentPreset: string = 'day';
+  private currentWindlight: WindlightSettings;
+
+  // Day/night cycle support (item 1.1b)
+  private dayNightEnabled = false;
+  private dayNightSpeed = 1.0;       // full cycle per hour
+  private dayNightAccumulator = 0;
+
+  // Draw distance for fog sync
+  private drawDistance = 1500;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
+    this.currentWindlight = defaultWindlightSettings();
 
-    // Sky dome with gradient shader (enhanced with sun disc, glow, horizon glow)
+    // ── Sky dome with gradient shader (sun disc, glow, halo, horizon glow, moon) ──
     const skyGeo = new THREE.SphereGeometry(4000, 32, 16);
     const skyMat = new THREE.ShaderMaterial({
       uniforms: {
-        topColor:     { value: new THREE.Color(0x0077ff) },
-        midColor:     { value: new THREE.Color(0x87ceeb) },
-        bottomColor:  { value: new THREE.Color(0xffffff) },
-        sunDirection: { value: new THREE.Vector3(0.5, 0.9, 0.5).normalize() },
-        sunIntensity: { value: 1.0 },
+        topColor:      { value: new THREE.Color(0x0077ff) },
+        midColor:      { value: new THREE.Color(0x87ceeb) },
+        bottomColor:   { value: new THREE.Color(0xffffff) },
+        sunDirection:  { value: new THREE.Vector3(0.5, 0.9, 0.5).normalize() },
+        sunIntensity:  { value: 1.0 },
+        sunColor:      { value: new THREE.Color(1.0, 0.957, 0.878) },
+        moonDirection: { value: new THREE.Vector3(-0.3, 0.8, -0.5).normalize() },
+        moonIntensity: { value: 0.0 },
+        moonColor:     { value: new THREE.Color(0.69, 0.73, 0.87) },
+        fogColor:      { value: new THREE.Color(0x87ceeb) },
+        horizonGlow:   { value: 1.0 },
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -155,6 +300,12 @@ export class Environment {
         uniform vec3 bottomColor;
         uniform vec3 sunDirection;
         uniform float sunIntensity;
+        uniform vec3 sunColor;
+        uniform vec3 moonDirection;
+        uniform float moonIntensity;
+        uniform vec3 moonColor;
+        uniform vec3 fogColor;
+        uniform float horizonGlow;
         varying vec3 vWorldPosition;
 
         void main() {
@@ -162,37 +313,40 @@ export class Environment {
 
           // ---- 3-stop sky gradient (zenith → mid → horizon) ----
           float h = dir.y;
-          // Clamp horizon band: map [-0.1 .. 0.3] to [0 .. 1]
           float horizonBlend = smoothstep(-0.1, 0.3, h);
-          // Upper blend: map [0.3 .. 1.0] to [0 .. 1]
           float upperBlend = smoothstep(0.3, 1.0, h);
 
           vec3 skyColor = mix(midColor, topColor, upperBlend);
-          // Below horizon fade into bottomColor
           skyColor = mix(bottomColor, skyColor, horizonBlend);
 
           // ---- Sun disc ----
           float sunDot = dot(dir, sunDirection);
-          // Sharp disc: smooth edge just below 1.0
           float sunDisc = smoothstep(0.9995, 0.9998, sunDot);
-          vec3 sunColor = vec3(1.0, 0.98, 0.85);
           skyColor += sunColor * sunDisc * 2.0 * sunIntensity;
 
           // ---- Sun glow / halo ----
-          // Wider exponential falloff around the sun
           float glow = pow(max(sunDot, 0.0), 64.0);
           skyColor += sunColor * glow * 0.6 * sunIntensity;
 
-          // Broad outer halo
           float halo = pow(max(sunDot, 0.0), 8.0);
           skyColor += vec3(1.0, 0.9, 0.7) * halo * 0.25 * sunIntensity;
 
           // ---- Horizon glow (warm orange, strongest when sun is low) ----
           float horizonFactor = exp(-abs(h) * 6.0);
-          // Horizon glow is brightest when sun is near the horizon
           float sunNearHorizon = 1.0 - abs(sunDirection.y);
           vec3 horizonGlowColor = vec3(1.0, 0.55, 0.15);
-          skyColor += horizonGlowColor * horizonFactor * sunNearHorizon * 0.5 * sunIntensity;
+          skyColor += horizonGlowColor * horizonFactor * sunNearHorizon * 0.5 * sunIntensity * horizonGlow;
+
+          // ---- Moon disc (soft glow) ----
+          float moonDot = dot(dir, moonDirection);
+          float moonDisc = smoothstep(0.998, 0.9995, moonDot);
+          skyColor += moonColor * moonDisc * 1.5 * moonIntensity;
+          float moonHalo = pow(max(moonDot, 0.0), 32.0);
+          skyColor += moonColor * moonHalo * 0.3 * moonIntensity;
+
+          // ---- Horizon fog blend ----
+          float fogBlend = smoothstep(-0.05, 0.0, h);
+          skyColor = mix(skyColor, fogColor, fogBlend * 0.3);
 
           gl_FragColor = vec4(skyColor, 1.0);
         }
@@ -203,7 +357,7 @@ export class Environment {
     this.skyDome = new THREE.Mesh(skyGeo, skyMat);
     scene.add(this.skyDome);
 
-    // Lighting
+    // ── Lighting ──
     this.sunLight = new THREE.DirectionalLight(0xfff4e0, 1.5);
     this.sunLight.position.set(100, 200, 100);
     scene.add(this.sunLight);
@@ -214,7 +368,19 @@ export class Environment {
     this.hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x362907, 0.4);
     scene.add(this.hemiLight);
 
-    // PBR Water
+    // Moon light (subtle, for nighttime)
+    this.moonLight = new THREE.DirectionalLight(0xaabbdd, 0.0);
+    this.moonLight.position.set(-100, 200, -100);
+    scene.add(this.moonLight);
+
+    // Moon visual disc in the sky dome (billboard-like, small sphere)
+    const moonGeo = new THREE.SphereGeometry(30, 16, 16);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xaabbdd });
+    this.moonDisc = new THREE.Mesh(moonGeo, moonMat);
+    this.moonDisc.visible = false;
+    scene.add(this.moonDisc);
+
+    // ── PBR Water ──
     const waterGeo = new THREE.PlaneGeometry(4096, 4096);
     const waterMat = new THREE.MeshStandardMaterial({
       color: 0x006994,
@@ -230,20 +396,156 @@ export class Environment {
     this.water.position.y = 20;
     scene.add(this.water);
 
-    // Fog
+    // ── Fog ──
     scene.fog = new THREE.Fog(0x87ceeb, 200, 1500);
 
     this.setTimeOfDay(0.5);
   }
 
-  // ── Preset API ──────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════
+  //  WindlightSettings API (server-driven environment)
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Apply WindlightSettings received from the server.
+   * This is the primary method for server-driven environment control.
+   */
+  applyWindlightSettings(settings: WindlightSettings): void {
+    this.currentWindlight = settings;
+
+    // ── Sky shader uniforms ──
+    const skyMat = this.skyDome.material as THREE.ShaderMaterial;
+    skyMat.uniforms.topColor.value.copy(vec3ToColor(settings.skyTopColor));
+    skyMat.uniforms.midColor.value.copy(vec3ToColor(settings.skyMidColor));
+    skyMat.uniforms.bottomColor.value.copy(vec3ToColor(settings.skyBottomColor));
+    skyMat.uniforms.sunDirection.value.set(
+      settings.sunDirection.x,
+      settings.sunDirection.y,
+      settings.sunDirection.z,
+    ).normalize();
+    skyMat.uniforms.sunIntensity.value = settings.sunIntensity;
+    skyMat.uniforms.sunColor.value.copy(vec3ToColor(settings.sunColor));
+    skyMat.uniforms.moonDirection.value.set(
+      settings.moonDirection.x,
+      settings.moonDirection.y,
+      settings.moonDirection.z,
+    ).normalize();
+    skyMat.uniforms.moonIntensity.value = settings.moonIntensity;
+    skyMat.uniforms.moonColor.value.copy(vec3ToColor(settings.moonColor));
+
+    // ── Sun light ──
+    const sunDist = 300;
+    this.sunLight.position.set(
+      settings.sunDirection.x * sunDist,
+      settings.sunDirection.y * sunDist,
+      settings.sunDirection.z * sunDist,
+    );
+    this.sunLight.color.copy(vec3ToColor(settings.sunColor));
+    this.sunLight.intensity = settings.sunIntensity;
+
+    // ── Moon light + disc ──
+    const moonDist = 300;
+    this.moonLight.position.set(
+      settings.moonDirection.x * moonDist,
+      settings.moonDirection.y * moonDist,
+      settings.moonDirection.z * moonDist,
+    );
+    this.moonLight.color.copy(vec3ToColor(settings.moonColor));
+    this.moonLight.intensity = settings.moonIntensity;
+
+    // Position moon disc in the sky
+    const moonPos = new THREE.Vector3(
+      settings.moonDirection.x,
+      settings.moonDirection.y,
+      settings.moonDirection.z,
+    ).normalize().multiplyScalar(3900);
+    this.moonDisc.position.copy(moonPos);
+    this.moonDisc.visible = settings.moonIntensity > 0.01;
+
+    // ── Ambient light ──
+    this.ambientLight.color.copy(vec3ToColor(settings.ambientColor));
+    this.ambientLight.intensity = settings.ambientIntensity;
+
+    // ── Hemisphere light ──
+    this.hemiLight.color.copy(vec3ToColor(settings.hemiSkyColor));
+    this.hemiLight.groundColor.copy(vec3ToColor(settings.hemiGroundColor));
+    this.hemiLight.intensity = settings.hemiIntensity;
+
+    // ── Fog ──
+    if (this.scene.fog) {
+      const fog = this.scene.fog as THREE.Fog;
+      fog.color.copy(vec3ToColor(settings.fogColor));
+      // Scale fog near/far relative to draw distance
+      const fogScale = this.drawDistance / 1500;
+      fog.near = settings.fogNear * fogScale;
+      fog.far = settings.fogFar * fogScale;
+    }
+
+    // ── Scene background (matches sky zenith) ──
+    this.scene.background = vec3ToColor(settings.skyTopColor);
+
+    // ── Water ──
+    const waterMat = this.water.material as THREE.MeshStandardMaterial;
+    waterMat.color.copy(vec3ToColor(settings.waterColor));
+    waterMat.opacity = settings.waterOpacity;
+    this.water.position.y = settings.waterHeight;
+
+    this.timeOfDay = settings.timeOfDay;
+    this.currentPreset = ''; // no longer on a named preset
+  }
+
+  /**
+   * Get the current WindlightSettings (useful for serialization/caching).
+   */
+  getWindlightSettings(): WindlightSettings {
+    return { ...this.currentWindlight };
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  Draw distance / fog
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Update fog distances based on the viewer's draw distance slider.
+   * Fog near = 80% of drawDistance, Fog far = 100% of drawDistance.
+   */
+  setDrawDistance(distance: number): void {
+    this.drawDistance = distance;
+    if (this.scene.fog) {
+      const fog = this.scene.fog as THREE.Fog;
+      fog.near = distance * 0.8;
+      fog.far = distance * 2;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  Day/Night Cycle (item 1.1b placeholder)
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Enable or disable automatic day/night cycle.
+   * When enabled, timeOfDay advances automatically via update().
+   */
+  setDayNightCycle(enabled: boolean, speed: number = 1.0): void {
+    this.dayNightEnabled = enabled;
+    this.dayNightSpeed = speed;
+    this.dayNightAccumulator = 0;
+  }
+
+  isDayNightCycleEnabled(): boolean {
+    return this.dayNightEnabled;
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  Preset API
+  // ══════════════════════════════════════════════════════════════════
 
   /** Return the list of available preset key names (in display order). */
   getPresetNames(): string[] {
     return Object.keys(SKY_PRESETS);
   }
 
-  /** Return the current preset key, or 'day' if using setTimeOfDay directly. */
+  /** Return the current preset key, or '' if using setTimeOfDay/applyWindlightSettings directly. */
   getCurrentPreset(): string {
     return this.currentPreset;
   }
@@ -301,11 +603,17 @@ export class Environment {
     waterMat.color.copy(preset.waterColor);
     waterMat.opacity = preset.waterOpacity;
 
+    // Hide moon during preset (presets don't define moon)
+    this.moonDisc.visible = false;
+    this.moonLight.intensity = 0;
+
     // Store the time-of-day so setTimeOfDay can still pick up later
     this.timeOfDay = preset.timeOfDay;
   }
 
-  // ── Original API (unchanged signature) ──────────────────────
+  // ══════════════════════════════════════════════════════════════════
+  //  Original API (unchanged signature)
+  // ══════════════════════════════════════════════════════════════════
 
   setTimeOfDay(t: number) {
     this.timeOfDay = Math.max(0, Math.min(1, t));
@@ -335,9 +643,22 @@ export class Environment {
     // Sun direction for the sky shader (normalized)
     const sunDir = new THREE.Vector3(100, sunY, sunZ).normalize();
     skyMat.uniforms.sunDirection.value.copy(sunDir);
+    skyMat.uniforms.sunColor.value.copy(this.sunLight.color);
 
     // Sun visibility fades at night
     skyMat.uniforms.sunIntensity.value = Math.max(0, Math.sin(angle) * 1.5);
+
+    // Moon: visible at night, opposite sun
+    const moonIntensity = Math.max(0, -Math.sin(angle) * 0.5);
+    skyMat.uniforms.moonIntensity.value = moonIntensity;
+    const moonDir = new THREE.Vector3(-100, -sunY, -sunZ).normalize();
+    skyMat.uniforms.moonDirection.value.copy(moonDir);
+    this.moonLight.intensity = moonIntensity * 0.3;
+    this.moonLight.position.copy(moonDir.clone().multiplyScalar(300));
+
+    // Moon disc
+    this.moonDisc.position.copy(moonDir.clone().multiplyScalar(3900));
+    this.moonDisc.visible = moonIntensity > 0.01;
 
     // Ambient
     this.ambientLight.intensity = 0.3 + Math.sin(angle) * 0.5;
@@ -353,7 +674,17 @@ export class Environment {
     this.currentPreset = '';
   }
 
-  update(_delta: number) {
-    this.water.position.y = 20 + Math.sin(Date.now() * 0.0005) * 0.5;
+  update(delta: number) {
+    // Water wave animation
+    this.water.position.y = (this.currentWindlight?.waterHeight ?? 20)
+      + Math.sin(Date.now() * 0.0005) * 0.5;
+
+    // Day/night cycle advancement (item 1.1b)
+    if (this.dayNightEnabled) {
+      this.dayNightAccumulator += delta;
+      const cycleDuration = 3600 / this.dayNightSpeed; // seconds per full cycle
+      this.timeOfDay = (this.dayNightAccumulator % cycleDuration) / cycleDuration;
+      this.setTimeOfDay(this.timeOfDay);
+    }
   }
 }

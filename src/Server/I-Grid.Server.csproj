@@ -6,6 +6,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>I_Grid.Server</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="_check/**" />
+    <Content Remove="_check/**" />
+    <EmbeddedResource Remove="_check/**" />
+    <None Remove="_check/**" />
+    <Compile Remove="Tests/**" />
+    <Content Remove="Tests/**" />
+    <EmbeddedResource Remove="Tests/**" />
+    <None Remove="Tests/**" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />

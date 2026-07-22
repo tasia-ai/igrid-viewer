@@ -6,6 +6,7 @@ import { TerrainRenderer } from '../engine/TerrainRenderer';
 import { ObjectRenderer } from '../engine/ObjectRenderer';
 import { AvatarRenderer } from '../engine/AvatarRenderer';
 import { PBRMaterialLoader } from '../engine/PBRMaterialLoader';
+import { type WindlightSettings } from '../engine/Environment';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -151,6 +152,11 @@ export class GridClient {
 
     hub.on('BalanceUpdate', (data: any) => {
       this.onBalanceUpdate?.(data.balance);
+    });
+
+    hub.on('EnvironmentUpdate', (data: WindlightSettings) => {
+      console.log('[Grid] Environment update received, timeOfDay:', data.timeOfDay?.toFixed(2));
+      this.sceneManager.environment.applyWindlightSettings(data);
     });
 
     hub.on('Error', (message: string) => {
