@@ -123,13 +123,13 @@
 - Serwer: `client.Directory` API (SearchPeople/Places/Events/Groups/Classifieds hub methods)
 
 ### 4.2 Build/Edit Tools
-- [ ] Create objects (rez)
-- [ ] Select/Edit objects
-- [ ] Move/Rotate/Scale gizmo
+- [x] Create objects (rez) — BuildTools enters create mode for rez placement
+- [x] Select/Edit objects — raycasting-based selection with object highlight
+- [x] Move/Rotate/Scale gizmo — `BuildTools.ts` (300 linii): 3-axis arrow/ring/cube gizmos
 - [ ] Texture picker (pipette)
 - [ ] Edit window (General/Features/Media/Texture tabs)
 - [ ] Permissions editor
-- Plik: `src/Client/src/engine/BuildTools.ts` ← NIE ISTNIEJE
+- Plik: `src/Client/src/engine/BuildTools.ts`
 
 ### 4.3 Land/Parcel Tools
 - [ ] Buy/Sell parcels
@@ -231,10 +231,10 @@
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
 | Faza 2 | 15/15 | 15 | **100%** ✅ |
 | Faza 3 | 18/18 | 18 | **100%** ✅ |
-| Faza 4 | 8/18 | 18 | **44%** |
+| Faza 4 | 11/18 | 18 | **61%** |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **61/85** | **85** | **72%** |
+| **ŁĄCZNIE** | **64/85** | **85** | **75%** |
 
 ## Priorytet realizacji
 
@@ -286,6 +286,7 @@ W każdej fazie:
 | engine/HUDRenderer.ts | 210 | HUD attachment rendering (orthographic camera pass) |
 | ui/SearchPanel.ts | 350 | Search UI (people/places/events/groups/classifieds) |
 | engine/MediaManager.ts | 280 | Media/music streaming (Web Audio API + HTML5 iframes) |
+| engine/BuildTools.ts | 300 | Build/edit tools (select/move/rotate/scale gizmos) |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
