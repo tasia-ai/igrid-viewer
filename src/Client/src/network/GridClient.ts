@@ -19,6 +19,7 @@ import { InventoryPanel, type InventoryFolder, type InventoryItem, type Inventor
 import { AppearanceEditor } from '../ui/AppearanceEditor';
 import { HUDRenderer } from '../engine/HUDRenderer';
 import { SearchPanel, type SearchCategory, type SearchResult } from '../ui/SearchPanel';
+import { MediaManager } from '../engine/MediaManager';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -44,6 +45,7 @@ export class GridClient {
   public appearanceEditor: AppearanceEditor;
   public hudRenderer: HUDRenderer;
   public searchPanel: SearchPanel;
+  public mediaManager: MediaManager;
   private _connected = false;
 
   public get connected(): boolean {
@@ -86,6 +88,7 @@ export class GridClient {
       onSearch: (category, query) => this.handleSearch(category, query),
       onResultClick: (result) => this.handleSearchResultClick(result),
     });
+    this.mediaManager = new MediaManager();
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
       this.handleInteraction(result, type);
@@ -561,6 +564,7 @@ export class GridClient {
     this.appearanceEditor.dispose();
     this.hudRenderer.dispose();
     this.searchPanel.dispose();
+    this.mediaManager.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
