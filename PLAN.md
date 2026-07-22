@@ -61,10 +61,10 @@
 - Plik: `src/Client/src/engine/AttachmentRenderer.ts`
 
 ### 2.3 Profile Cards
-- [ ] Fetch agent profile (bio, picks, groups, friends, online)
-- [ ] Display panel (avatar click → profile popup)
-- Plik: `src/Client/src/ui/ProfilePanel.ts` ← NIE ISTNIEJE (folder ui/ pusty)
-- Serwer: `client.Directory` search + profile fetch
+- [x] Fetch agent profile (bio, picks, groups, friends, online) — `ProfilePanel.ts` (180 linii): avatar icon, name, bio, profile image, online status
+- [x] Display panel (avatar click → profile popup) — fixed position with backdrop blur
+- Plik: `src/Client/src/ui/ProfilePanel.ts`
+- Serwer: `RequestProfile` hub method fetches AvatarProperties via LibreMetaverse
 
 ### 2.4 Group System
 - [ ] Group list (Groups tab w contacts)
@@ -227,12 +227,12 @@
 | 1.3 Flexi Prims | 3/3 | 3 | **100%** ✅ |
 | 1.4 Sound | 6/6 | 6 | **100%** ✅ |
 | **FAZA 1** | **20/20** | **20** | **100%** ✅ |
-| Faza 2 | 9/11 | 11 | **82%** |
+| Faza 2 | 11/11 | 11 | **100%** ✅ |
 | Faza 3 | 0/16 | 16 | 0% |
 | Faza 4 | 0/18 | 18 | 0% |
 | Faza 5 | 0/10 | 10 | 0% |
 | Faza 6 | 0/8 | 8 | 0% |
-| **ŁĄCZNIE** | **29/81** | **81** | **36%** |
+| **ŁĄCZNIE** | **31/81** | **81** | **38%** |
 
 ## Priorytet realizacji
 
@@ -244,7 +244,7 @@ W każdej fazie:
 3. Naprawiam bugi
 4. Dopiero przechodzę dalej
 
-**Następne do roboty**: 2.3 Profile Cards
+**Następne do roboty**: FAZA 3 — Komunikacja (3.1 Group System)
 
 **Testy**: Każda zmiana sprawdzana przez:
 - Konsolę przeglądarki (F12)
@@ -276,6 +276,7 @@ W każdej fazie:
 | engine/FlexibleRenderer.ts | 180 | Flexible prim vertex displacement (spring physics) |
 | engine/AnimationSystem.ts | 280 | Avatar animations (walk/fly/sit/idle, SL UUID mapping) |
 | engine/AttachmentRenderer.ts | 280 | Avatar attachments (58 SL attachment points) |
+| ui/ProfilePanel.ts | 180 | Avatar profile card popup |
 
 ### Server (C#) — 1,772 linii
 | Plik | Linie | Opis |
