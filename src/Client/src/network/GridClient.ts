@@ -25,6 +25,7 @@ import { LandTools, type ParcelInfo } from '../ui/LandTools';
 import { WorldMap } from '../ui/WorldMap';
 import { NotecardEditor } from '../ui/NotecardEditor';
 import { SnapshotTools, type SnapshotOptions } from '../ui/SnapshotTools';
+import { ChatMedia } from '../ui/ChatMedia';
 
 /**
  * Bridges the browser to the ViewerHub + HypergridHub via SignalR.
@@ -56,6 +57,7 @@ export class GridClient {
   public worldMap: WorldMap;
   public notecardEditor: NotecardEditor;
   public snapshotTools: SnapshotTools;
+  public chatMedia: ChatMedia;
   private _connected = false;
 
   public get connected(): boolean {
@@ -115,6 +117,7 @@ export class GridClient {
     this.snapshotTools = new SnapshotTools({
       onCapture: (imageData, options) => this.handleSnapshot(imageData, options),
     });
+    this.chatMedia = new ChatMedia();
     // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
       this.handleInteraction(result, type);
@@ -615,6 +618,7 @@ export class GridClient {
     this.worldMap.dispose();
     this.notecardEditor.dispose();
     this.snapshotTools.dispose();
+    this.chatMedia.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
