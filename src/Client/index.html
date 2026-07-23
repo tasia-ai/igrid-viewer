@@ -388,6 +388,34 @@
     </div>
   </div>
 
-  <script type="module" src="/src/main.ts"></script>
+  <script>
+    // Safety: hide preloader even if main.ts fails to load
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        var p = document.getElementById('preloader');
+        if (p) p.classList.add('hidden');
+      }, 3000);
+    });
+    // Fallback: if load doesn't fire in 5s, force hide
+    setTimeout(function() {
+      var p = document.getElementById('preloader');
+      if (p && !p.classList.contains('hidden')) {
+        p.classList.add('hidden');
+        console.warn('[Viewer] Preloader force-hidden after 5s timeout');
+      }
+    }, 5000);
+  </script>
+  <script type="module">
+    // Wrap main.ts import with error logging
+    try {
+      await import('/src/main.ts');
+    } catch (e) {
+      console.error('[Viewer] FATAL: main.ts failed to load:', e);
+      document.getElementById('preloader')?.classList.add('hidden');
+      document.getElementById('login-panel')!.style.display = 'block';
+      document.getElementById('login-error')!.textContent = 'App failed to load. Check console (F12).';
+      document.getElementById('login-error')!.style.display = 'block';
+    }
+  </script>
 </body>
 </html>
