@@ -171,6 +171,97 @@
     }
     .tool-btn:hover { background:rgba(100,160,220,0.2); color:#fff; border-color:rgba(100,160,220,0.4); }
     .tool-btn.active { background:rgba(100,160,220,0.3); color:#6ab0ff; border-color:#6ab0ff; }
+
+    /* === FIRESTORM-STYLE IM PANEL === */
+    #im-panel {
+      position:fixed; top:50%; left:200px; transform:translateY(-50%); z-index:50;
+      width:560px; height:420px; display:none;
+      background:rgba(18,22,32,0.96); border-radius:8px; border:1px solid rgba(100,160,220,0.25);
+      box-shadow:0 8px 32px rgba(0,0,0,0.5); flex-direction:row; overflow:hidden;
+    }
+    #im-panel-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:6px 12px; background:rgba(10,14,22,0.9); border-bottom:1px solid rgba(255,255,255,0.08);
+      position:absolute; top:0; left:0; right:0; height:32px; z-index:2;
+    }
+    #im-panel-header span { color:#6ab0ff; font-size:11px; font-weight:600; letter-spacing:0.5px; }
+    #im-panel-close { background:none; border:none; color:#888; font-size:14px; cursor:pointer; padding:2px 6px; }
+    #im-panel-close:hover { color:#ef5350; }
+    #im-panel-body { display:flex; width:100%; height:100%; padding-top:32px; }
+
+    /* IM Sidebar */
+    #im-sidebar {
+      width:180px; min-width:180px; display:flex; flex-direction:column;
+      border-right:1px solid rgba(255,255,255,0.08); background:rgba(12,16,26,0.6);
+    }
+    #im-search-bar {
+      padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+    #im-search-input {
+      width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+      color:#ccc; padding:4px 8px; border-radius:3px; font-size:11px;
+    }
+    #im-search-input:focus { border-color:#6ab0ff; outline:none; }
+    #im-convo-list {
+      flex:1; overflow-y:auto; padding:4px 0;
+    }
+    .im-convo-item {
+      display:flex; align-items:center; gap:6px;
+      padding:6px 10px; cursor:pointer; font-size:11px; color:#aab;
+      border-left:3px solid transparent; transition:background 0.12s;
+    }
+    .im-convo-item:hover { background:rgba(100,160,220,0.1); }
+    .im-convo-item.active { background:rgba(100,160,220,0.15); border-left-color:#6ab0ff; color:#6ab0ff; }
+    .im-convo-item .im-status-dot {
+      width:7px; height:7px; border-radius:50%; flex-shrink:0;
+    }
+    .im-convo-item .im-status-dot.online { background:#4caf50; box-shadow:0 0 4px rgba(76,175,80,0.5); }
+    .im-convo-item .im-status-dot.offline { background:#555; }
+    .im-convo-item .im-convo-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .im-convo-item .im-unread-badge {
+      background:#ef5350; color:white; font-size:9px; font-weight:700;
+      padding:1px 5px; border-radius:8px; min-width:16px; text-align:center; flex-shrink:0;
+    }
+
+    /* IM Chat Area */
+    #im-chat-area {
+      flex:1; display:flex; flex-direction:column; min-width:0;
+    }
+    #im-chat-header {
+      padding:6px 12px; font-size:12px; color:#6ab0ff; font-weight:600;
+      border-bottom:1px solid rgba(255,255,255,0.06); display:flex;
+      justify-content:space-between; align-items:center; background:rgba(14,18,28,0.5);
+      min-height:30px;
+    }
+    #im-chat-header-actions { display:flex; gap:8px; }
+    #im-chat-header-actions button { background:none; border:none; color:#888; font-size:11px; cursor:pointer; padding:2px 4px; }
+    #im-chat-header-actions button:hover { color:#ef5350; }
+    #im-chat-messages {
+      flex:1; overflow-y:auto; padding:8px 12px; font-size:11px; line-height:1.5;
+    }
+    #im-chat-messages:empty::before {
+      content:'Select a conversation'; color:#555; font-style:italic; display:block; text-align:center; margin-top:40px;
+    }
+    .im-msg { margin-bottom:8px; }
+    .im-msg .im-msg-time { color:#555; font-size:9px; }
+    .im-msg .im-msg-name { font-weight:600; font-size:11px; }
+    .im-msg .im-msg-text { color:#ddd; font-size:11px; margin-top:1px; word-wrap:break-word; }
+    .im-msg.sent .im-msg-name { color:#6ab0ff; }
+    .im-msg.received .im-msg-name { color:#4caf50; }
+    #im-chat-input-bar {
+      display:flex; gap:4px; padding:6px 10px; border-top:1px solid rgba(255,255,255,0.08);
+      background:rgba(14,18,28,0.4);
+    }
+    #im-chat-input {
+      flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+      color:white; padding:5px 10px; border-radius:4px; font-size:11px;
+    }
+    #im-chat-input:focus { border-color:#6ab0ff; outline:none; }
+    #im-chat-send {
+      background:linear-gradient(135deg,#3a7bd5,#4a8ae5); border:none; color:white;
+      padding:5px 14px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:600;
+    }
+    #im-chat-send:hover { background:linear-gradient(135deg,#2a6bc5,#3a7ad5); }
   </style>
 </head>
 <body>
