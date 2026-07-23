@@ -264,13 +264,12 @@ connectBtn.addEventListener('click', async () => {
     );
 
     showPreloader('Connecting to grid...');
-    // Timeout: 15s for SignalR, then 30s for grid login
+    // Timeout: 15s for SignalR
     const connectTimeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('SignalR connection timed out')), 15000)
     );
     await Promise.race([gridClient.start(), connectTimeout]);
-    console.log('[Grid] SignalR connected, invoking ConnectAvatar...');
-    showPreloader('Logging into grid (may take a moment)...');
+    console.log('[Grid] SignalR connected, starting render loop...');
 
     // Read grid & location selections
     const gridVal = (document.getElementById('grid-select') as HTMLSelectElement)?.value;
@@ -281,13 +280,10 @@ connectBtn.addEventListener('click', async () => {
     const regionVal = locVal === 'region' ? (document.getElementById('start-region') as HTMLInputElement)?.value : undefined;
     const startLoc = locVal === 'region' && regionVal ? `uri:${regionVal}` : locVal === 'last' ? 'last' : undefined;
 
-    console.log('[Grid] Connect:', { gridUrl, startLoc, regionVal });
-    const avatarTimeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Grid login timed out — the grid may be offline')), 30000)
-    );
-    await Promise.race([gridClient.connectAvatar(selectedAvatarId, gridUrl, startLoc, regionVal), avatarTimeout]);
+    // Show scene + world UI IMMEDIATELY — no blocking await
     hidePreloader();
     showWorldUI();
+    addChatMessage('System', 'Connected to viewer. Logging into grid in background...');
     sceneManager.animate((delta) => {
       gridClient?.camera?.update(delta);
       gridClient?.particleManager?.update(delta);
@@ -295,6 +291,18 @@ connectBtn.addEventListener('click', async () => {
       gridClient?.animationSystem?.update(delta);
       gridClient?.attachmentRenderer?.update();
     });
+
+    // Fire connectAvatar in background — NEVER blocks the browser
+    console.log('[Grid] Connect (background):', { gridUrl, startLoc, regionVal });
+    gridClient.connectAvatar(selectedAvatarId, gridUrl, startLoc, regionVal)
+      .then(() => {
+        console.log('[Grid] Avatar connected!');
+        addChatMessage('System', 'Logged into grid successfully!');
+      })
+      .catch((err) => {
+        console.error('[Grid] Avatar connect failed:', err);
+        addChatMessage('System', `Grid login failed: ${err.message || 'Unknown error'}. Is the grid running?`);
+      });
   } catch (err) {
     console.error('Connect failed:', err);
     hidePreloader();
