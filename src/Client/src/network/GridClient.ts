@@ -36,36 +36,36 @@ import { EditWindow, type ObjectEditData } from '../engine/BuildTools';
  * Receives world events and dispatches them to the 3D renderers.
  */
 export class GridClient {
-  private connection: signalR.HubConnection;
+  private connection!:  signalR.HubConnection;
   private hypergridConnection: signalR.HubConnection | null = null;
-  private terrain: TerrainRenderer;
-  private objects: ObjectRenderer;
-  private avatars: AvatarRenderer;
-  public camera: CameraController;
-  public materialLoader: PBRMaterialLoader;
-  public soundManager: SoundManager;
-  public particleManager: ParticleSystemManager;
-  public flexibleRenderer: FlexibleRenderer;
-  public animationSystem: AnimationSystem;
-  public attachmentRenderer: AttachmentRenderer;
-  public profilePanel: ProfilePanel;
-  public groupPanel: GroupPanel;
-  public interactionManager: InteractionManager;
-  public inventoryPanel: InventoryPanel;
-  public appearanceEditor: AppearanceEditor;
-  public hudRenderer: HUDRenderer;
-  public searchPanel: SearchPanel;
-  public mediaManager: MediaManager;
-  public buildTools: BuildTools;
-  public landTools: LandTools;
-  public worldMap: WorldMap;
-  public notecardEditor: NotecardEditor;
-  public snapshotTools: SnapshotTools;
-  public chatMedia: ChatMedia;
-  public scriptEditor: ScriptEditor;
-  public uploadTools: UploadTools;
-  public voiceChat: VoiceChat;
-  public editWindow: EditWindow;
+  private terrain!:  TerrainRenderer;
+  private objects!:  ObjectRenderer;
+  private avatars!:  AvatarRenderer;
+  public camera!:  CameraController;
+  public materialLoader!:  PBRMaterialLoader;
+  public soundManager!:  SoundManager;
+  public particleManager!:  ParticleSystemManager;
+  public flexibleRenderer!:  FlexibleRenderer;
+  public animationSystem!:  AnimationSystem;
+  public attachmentRenderer!:  AttachmentRenderer;
+  public profilePanel!:  ProfilePanel;
+  public groupPanel!:  GroupPanel;
+  public interactionManager!:  InteractionManager;
+  public inventoryPanel!:  InventoryPanel;
+  public appearanceEditor!:  AppearanceEditor;
+  public hudRenderer!:  HUDRenderer;
+  public searchPanel!:  SearchPanel;
+  public mediaManager!:  MediaManager;
+  public buildTools!:  BuildTools;
+  public landTools!:  LandTools;
+  public worldMap!:  WorldMap;
+  public notecardEditor!:  NotecardEditor;
+  public snapshotTools!:  SnapshotTools;
+  public chatMedia!:  ChatMedia;
+  public scriptEditor!:  ScriptEditor;
+  public uploadTools!:  UploadTools;
+  public voiceChat!:  VoiceChat;
+  public editWindow!:  EditWindow;
   private _connected = false;
 
   public get connected(): boolean {
@@ -87,15 +87,27 @@ export class GridClient {
     private onBalanceUpdate?: (balance: number) => void,
     private onCurrencySymbol?: (symbol: string) => void,
     private onIMHistory?: (otherId: string, otherName: string, messages: { from: string; text: string; time: string }[]) => void,
-  ) {
-    this.materialLoader = new PBRMaterialLoader(baseUrl, authToken);
-    this.terrain = new TerrainRenderer(sceneManager.scene, baseUrl, authToken);
-    this.objects = new ObjectRenderer(sceneManager.scene, this.materialLoader);
-    this.animationSystem = new AnimationSystem(sceneManager.scene);
-    this.attachmentRenderer = new AttachmentRenderer(sceneManager.scene);
+  ) { /* params stored, heavy init deferred to init() */ }
+
+  /** Heavy initialization — call after constructor, yields between chunks */
+  async init(): Promise<void> {
+    const yield_ = () => new Promise<void>(r => requestAnimationFrame(() => r()));
+    const log = (msg: string) => { console.log('[Grid]', msg); this.onChatMessage?.('System', msg); };
+
+    // Chunk 1: Core renderers
+    log('Loading renderers...');
+    this.materialLoader = new PBRMaterialLoader(this.baseUrl, this.authToken);
+    this.terrain = new TerrainRenderer(this.sceneManager.scene, this.baseUrl, this.authToken);
+    this.objects = new ObjectRenderer(this.sceneManager.scene, this.materialLoader);
+    this.animationSystem = new AnimationSystem(this.sceneManager.scene);
+    this.attachmentRenderer = new AttachmentRenderer(this.sceneManager.scene);
+    await yield_();
+
+    // Chunk 2: UI panels
+    log('Loading UI panels...');
     this.profilePanel = new ProfilePanel();
     this.groupPanel = new GroupPanel();
-    this.interactionManager = new InteractionManager(sceneManager.scene, sceneManager.camera);
+    this.interactionManager = new InteractionManager(this.sceneManager.scene, this.sceneManager.camera);
     this.inventoryPanel = new InventoryPanel({
       onAction: (action, target) => this.handleInventoryAction(action, target),
     });
@@ -103,16 +115,24 @@ export class GridClient {
       onParamChange: (paramId, value) => this.connection?.invoke('SetVisualParam', paramId, value),
       onBake: () => this.connection?.invoke('BakeAppearance'),
     });
-    this.hudRenderer = new HUDRenderer(sceneManager.scene, sceneManager.renderer);
+    await yield_();
+
+    // Chunk 3: More UI + tools
+    log('Loading tools...');
+    this.hudRenderer = new HUDRenderer(this.sceneManager.scene, this.sceneManager.renderer);
     this.searchPanel = new SearchPanel({
       onSearch: (category, query) => this.handleSearch(category, query),
       onResultClick: (result) => this.handleSearchResultClick(result),
     });
     this.mediaManager = new MediaManager();
-    this.buildTools = new BuildTools(sceneManager.scene, sceneManager.camera, sceneManager.renderer);
+    this.buildTools = new BuildTools(this.sceneManager.scene, this.sceneManager.camera, this.sceneManager.renderer);
     this.buildTools.setCallbacks({
       onEditProperty: (objectId, property, value) => this.connection?.invoke('SetObjectProperty', objectId, property, value),
     });
+    await yield_();
+
+    // Chunk 4: More panels
+    log('Loading editors...');
     this.landTools = new LandTools({
       onAction: (action, data) => this.connection?.invoke('LandAction', action, data),
     });
@@ -126,6 +146,10 @@ export class GridClient {
       onCapture: (imageData, options) => this.handleSnapshot(imageData, options),
     });
     this.chatMedia = new ChatMedia();
+    await yield_();
+
+    // Chunk 5: Script/Upload/Voice/Build + core engine
+    log('Loading remaining modules...');
     this.scriptEditor = new ScriptEditor({
       onSave: (id, content, mono) => this.connection?.invoke('UpdateScript', id, content, mono),
       onCompile: (id, content) => this.connection?.invoke('UpdateScript', id, content, true),
@@ -139,16 +163,17 @@ export class GridClient {
     this.editWindow = new EditWindow({
       onChange: (objectId, prop, value) => this.connection?.invoke('SetObjectProperty', objectId, prop, value),
     });
-    // Set up interaction callback
     this.interactionManager.setCallback((result, type) => {
       this.handleInteraction(result, type);
     });
+    await yield_();
 
-    this.avatars = new AvatarRenderer(sceneManager.scene, this.animationSystem, this.attachmentRenderer);
-    this.camera = new CameraController(sceneManager.camera, sceneManager.renderer.domElement);
-    this.soundManager = new SoundManager(baseUrl, authToken);
-    this.particleManager = new ParticleSystemManager(sceneManager.scene);
-    this.flexibleRenderer = new FlexibleRenderer(sceneManager.scene);
+    // Chunk 6: Core engine + SignalR
+    this.avatars = new AvatarRenderer(this.sceneManager.scene, this.animationSystem, this.attachmentRenderer);
+    this.camera = new CameraController(this.sceneManager.camera, this.sceneManager.renderer.domElement);
+    this.soundManager = new SoundManager(this.baseUrl, this.authToken);
+    this.particleManager = new ParticleSystemManager(this.sceneManager.scene);
+    this.flexibleRenderer = new FlexibleRenderer(this.sceneManager.scene);
 
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl('/hubs/viewer', {
@@ -158,6 +183,7 @@ export class GridClient {
       .build();
 
     this.setupEventHandlers(this.connection);
+    log('All modules loaded!');
   }
 
   private setupEventHandlers(hub: signalR.HubConnection): void {

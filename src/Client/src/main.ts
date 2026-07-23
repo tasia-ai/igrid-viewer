@@ -250,9 +250,11 @@ connectBtn.addEventListener('click', async () => {
       gridClient?.attachmentRenderer?.update();
     });
 
-    // Step 2: Yield, then create GridClient (heavy — 25+ objects)
-    await new Promise(r => setTimeout(r, 50));
+    // Step 2: Yield to browser, then create GridClient
     addChatMessage('System', 'Loading modules...');
+    await new Promise(r => setTimeout(r, 200));
+    // Split heavy GridClient init into chunks — yield every 3 objects
+    await new Promise(r => requestAnimationFrame(r));
     gridClient = new GridClient(sceneManager, authToken, window.location.origin,
       (from, msg) => addChatMessage(from, msg),
       (x, y, z) => { positionDisplay.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}`; minimap?.setPlayerPosition(x, y); },
@@ -273,6 +275,8 @@ connectBtn.addEventListener('click', async () => {
         renderFriends();
       },
     );
+    // Heavy init with yields — never blocks browser
+    await gridClient.init();
 
     // Step 3: Connect SignalR in background — NEVER block
     addChatMessage('System', 'Connecting to SignalR...');
