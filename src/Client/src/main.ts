@@ -278,33 +278,26 @@ connectBtn.addEventListener('click', async () => {
     // Heavy init with yields — never blocks browser
     await gridClient.init();
 
-    // Step 3: Connect SignalR in background — NEVER block
-    addChatMessage('System', 'Connecting to SignalR...');
-    gridClient.start()
-      .then(() => {
-        console.log('[Grid] SignalR connected');
-        addChatMessage('System', 'SignalR connected. Logging into grid...');
+    // Step 3: Start SignalR, then grid login
+    addChatMessage('System', 'Connecting to server...');
+    await gridClient.start();
+    addChatMessage('System', 'Logging into grid...');
+    try {
+      // Read grid & location selections
+      const gridVal = (document.getElementById('grid-select') as HTMLSelectElement)?.value;
+      const gridUrl = gridVal === 'custom'
+        ? (document.getElementById('custom-grid-url') as HTMLInputElement)?.value || undefined
+        : gridVal ? `https://${gridVal}:8002/` : undefined;
+      const locVal = (document.getElementById('start-location') as HTMLSelectElement)?.value;
+      const regionVal = locVal === 'region' ? (document.getElementById('start-region') as HTMLInputElement)?.value : undefined;
+      const startLoc = locVal === 'region' && regionVal ? `uri:${regionVal}` : locVal === 'last' ? 'last' : undefined;
 
-        // Read grid & location selections
-        const gridVal = (document.getElementById('grid-select') as HTMLSelectElement)?.value;
-        const gridUrl = gridVal === 'custom'
-          ? (document.getElementById('custom-grid-url') as HTMLInputElement)?.value || undefined
-          : gridVal ? `https://${gridVal}:8002/` : undefined;
-        const locVal = (document.getElementById('start-location') as HTMLSelectElement)?.value;
-        const regionVal = locVal === 'region' ? (document.getElementById('start-region') as HTMLInputElement)?.value : undefined;
-        const startLoc = locVal === 'region' && regionVal ? `uri:${regionVal}` : locVal === 'last' ? 'last' : undefined;
-
-        // Fire connectAvatar — totally non-blocking
-        return gridClient!.connectAvatar(selectedAvatarId!, gridUrl, startLoc, regionVal);
-      })
-      .then(() => {
-        console.log('[Grid] Avatar connected!');
-        addChatMessage('System', '✅ Logged into grid!');
-      })
-      .catch((err) => {
-        console.error('[Grid] Connect failed:', err);
-        addChatMessage('System', `❌ Grid connection failed: ${err.message || 'Unknown error'}`);
-      });
+      await gridClient.connectAvatar(selectedAvatarId!, gridUrl, startLoc, regionVal);
+      addChatMessage('System', '✅ Logged into grid!');
+    } catch (err) {
+      console.error('[Grid] Avatar connect failed:', err);
+      addChatMessage('System', `❌ Grid connection failed: ${(err as Error).message || 'Unknown error'}`);
+    }
 
   } catch (err) {
     console.error('Connect failed:', err);
