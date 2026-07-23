@@ -226,22 +226,33 @@ function hideWorldUI() {
 connectBtn.addEventListener('click', async () => {
   if (!selectedAvatarId) return;
 
-  // Show preloader BEFORE heavy sync work so browser can render it
   showPreloader('Preparing world...');
   connectBtn.disabled = true;
   connectBtn.textContent = 'Connecting...';
 
-  // Yield to browser so it renders the preloader, then do heavy init
+  // Yield to render preloader
   await new Promise(r => setTimeout(r, 50));
 
   try {
+    // Step 1: Create scene (lightweight)
     sceneManager = new SceneManager(viewport);
-
-    // Yield again between heavy constructors
-    await new Promise(r => setTimeout(r, 10));
     minimap = new MinimapRenderer(minimapCanvas);
 
-    await new Promise(r => setTimeout(r, 10));
+    // Show world UI and start render loop IMMEDIATELY
+    hidePreloader();
+    showWorldUI();
+    addChatMessage('System', 'Initializing viewer...');
+    sceneManager.animate((delta) => {
+      gridClient?.camera?.update(delta);
+      gridClient?.particleManager?.update(delta);
+      gridClient?.flexibleRenderer?.update(delta);
+      gridClient?.animationSystem?.update(delta);
+      gridClient?.attachmentRenderer?.update();
+    });
+
+    // Step 2: Yield, then create GridClient (heavy — 25+ objects)
+    await new Promise(r => setTimeout(r, 50));
+    addChatMessage('System', 'Loading modules...');
     gridClient = new GridClient(sceneManager, authToken, window.location.origin,
       (from, msg) => addChatMessage(from, msg),
       (x, y, z) => { positionDisplay.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}`; minimap?.setPlayerPosition(x, y); },
@@ -263,54 +274,41 @@ connectBtn.addEventListener('click', async () => {
       },
     );
 
-    showPreloader('Connecting to grid...');
-    // Timeout: 15s for SignalR
-    const connectTimeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('SignalR connection timed out')), 15000)
-    );
-    await Promise.race([gridClient.start(), connectTimeout]);
-    console.log('[Grid] SignalR connected, starting render loop...');
+    // Step 3: Connect SignalR in background — NEVER block
+    addChatMessage('System', 'Connecting to SignalR...');
+    gridClient.start()
+      .then(() => {
+        console.log('[Grid] SignalR connected');
+        addChatMessage('System', 'SignalR connected. Logging into grid...');
 
-    // Read grid & location selections
-    const gridVal = (document.getElementById('grid-select') as HTMLSelectElement)?.value;
-    const gridUrl = gridVal === 'custom'
-      ? (document.getElementById('custom-grid-url') as HTMLInputElement)?.value || undefined
-      : gridVal ? `https://${gridVal}:8002/` : undefined;
-    const locVal = (document.getElementById('start-location') as HTMLSelectElement)?.value;
-    const regionVal = locVal === 'region' ? (document.getElementById('start-region') as HTMLInputElement)?.value : undefined;
-    const startLoc = locVal === 'region' && regionVal ? `uri:${regionVal}` : locVal === 'last' ? 'last' : undefined;
+        // Read grid & location selections
+        const gridVal = (document.getElementById('grid-select') as HTMLSelectElement)?.value;
+        const gridUrl = gridVal === 'custom'
+          ? (document.getElementById('custom-grid-url') as HTMLInputElement)?.value || undefined
+          : gridVal ? `https://${gridVal}:8002/` : undefined;
+        const locVal = (document.getElementById('start-location') as HTMLSelectElement)?.value;
+        const regionVal = locVal === 'region' ? (document.getElementById('start-region') as HTMLInputElement)?.value : undefined;
+        const startLoc = locVal === 'region' && regionVal ? `uri:${regionVal}` : locVal === 'last' ? 'last' : undefined;
 
-    // Show scene + world UI IMMEDIATELY — no blocking await
-    hidePreloader();
-    showWorldUI();
-    addChatMessage('System', 'Connected to viewer. Logging into grid in background...');
-    sceneManager.animate((delta) => {
-      gridClient?.camera?.update(delta);
-      gridClient?.particleManager?.update(delta);
-      gridClient?.flexibleRenderer?.update(delta);
-      gridClient?.animationSystem?.update(delta);
-      gridClient?.attachmentRenderer?.update();
-    });
-
-    // Fire connectAvatar in background — NEVER blocks the browser
-    console.log('[Grid] Connect (background):', { gridUrl, startLoc, regionVal });
-    gridClient.connectAvatar(selectedAvatarId, gridUrl, startLoc, regionVal)
+        // Fire connectAvatar — totally non-blocking
+        return gridClient!.connectAvatar(selectedAvatarId!, gridUrl, startLoc, regionVal);
+      })
       .then(() => {
         console.log('[Grid] Avatar connected!');
-        addChatMessage('System', 'Logged into grid successfully!');
+        addChatMessage('System', '✅ Logged into grid!');
       })
       .catch((err) => {
-        console.error('[Grid] Avatar connect failed:', err);
-        addChatMessage('System', `Grid login failed: ${err.message || 'Unknown error'}. Is the grid running?`);
+        console.error('[Grid] Connect failed:', err);
+        addChatMessage('System', `❌ Grid connection failed: ${err.message || 'Unknown error'}`);
       });
+
   } catch (err) {
     console.error('Connect failed:', err);
     hidePreloader();
     connectBtn.disabled = false;
     connectBtn.textContent = 'Enter World';
-    addChatMessage('System', `Connection failed: ${(err as Error).message || 'Unknown error'}. Is the I-Grid server running?`);
-    showError(`Connection failed: ${(err as Error).message || 'Unknown error'}`);
-    // Still show world UI so user can see the error
+    addChatMessage('System', `Initialization failed: ${(err as Error).message || 'Unknown error'}`);
+    showError(`Failed: ${(err as Error).message || 'Unknown error'}`);
     showWorldUI();
   }
 });
