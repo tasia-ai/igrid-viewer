@@ -1,7 +1,28 @@
 # I-Grid Viewer — Development Plan to Full Firestorm
 
 ## Current Status
-✅ Working: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping), avatar attachments (58 SL attachment points), profile cards, group system (list/chat/notices), object interaction (sit/touch/pay), inventory browser (folder tree, search, wear/rez), appearance editor (wearables + visual params + bake), HUD rendering (orthographic camera pass)**
+✅ **Technically Implemented:**
+- 3D scene, terrain, prims, mesh
+- Chat, IM, friends list
+- Minimap, camera d-pad, teleport
+- Preloader, reconnect, draw distance
+- Doritos currency, region/parcel info
+- Account management
+- Sky shader (gradient + sun disc + glow + horizon)
+- Sky presets (day/sunset/night/mars), day/night cycle
+- PBR water, fog synced to draw distance
+- WindlightSettings from server
+- 3D positional audio (Web Audio API + HRTF panner)
+- Particle effects (spark/fire/smoke/glow/ring via THREE.Points)
+- Flexible prims (vertex displacement with spring physics)
+- Object sound tracking, procedural footsteps, ambient sound API
+- Avatar animations (walk/fly/sit/idle with SL UUID mapping)
+- Avatar attachments (58 SL attachment points)
+- Profile cards, group system (list/chat/notices)
+- Object interaction (sit/touch/pay)
+- Inventory browser (folder tree, search, wear/rez)
+- Appearance editor (wearables + visual params + bake)
+- HUD rendering (orthographic camera pass)
 
 ## PHASE 1 — Living World (Visual)
 
