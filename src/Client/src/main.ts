@@ -212,39 +212,55 @@ function hideWorldUI() {
 // === CONNECT ===
 connectBtn.addEventListener('click', async () => {
   if (!selectedAvatarId) return;
-  sceneManager = new SceneManager(viewport);
-  minimap = new MinimapRenderer(minimapCanvas);
-  gridClient = new GridClient(sceneManager, authToken, window.location.origin,
-    (from, msg) => addChatMessage(from, msg),
-    (x, y, z) => { positionDisplay.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}`; minimap?.setPlayerPosition(x, y); },
-    undefined,
-    (id, name, online) => { friends.set(id, { id, name, online }); renderFriends(); },
-    (from, msg, fid) => { addIMMessage(from, msg, fid); },
-    (x, y, h) => { minimap?.updatePatch(x, y, h); },
-    (rname, rx, ry) => { regionName.textContent = `☀ ${rname}`; parcelName.textContent = `(${rx}, ${ry})`; },
-    (pname, area) => { parcelName.textContent = pname; },
-    (balance) => { currencyDisplay.textContent = `${currencySym} ${balance.toLocaleString()}`; },
-    (sym) => { currencySym = sym; currencyDisplay.textContent = `${sym} ${currencyDisplay.textContent?.replace(/^[^\d]*\s*/, '') || '0'}`; },
-    (otherId, otherName, messages) => {
-      // Load IM history from server
-      if (!convos.has(otherId)) convos.set(otherId, { friendId: otherId, friendName: otherName, messages: [], unread: 0 });
-      const conv = convos.get(otherId)!;
-      for (const m of messages) {
-        conv.messages.push({ from: m.from, text: m.text, time: new Date(m.time) });
-      }
-      renderFriends();
-    },
-  );
+
+  // Show preloader BEFORE heavy sync work so browser can render it
+  showPreloader('Preparing world...');
+  connectBtn.disabled = true;
+  connectBtn.textContent = 'Connecting...';
+
+  // Yield to browser so it renders the preloader, then do heavy init
+  await new Promise(r => setTimeout(r, 50));
+
   try {
+    sceneManager = new SceneManager(viewport);
+
+    // Yield again between heavy constructors
+    await new Promise(r => setTimeout(r, 10));
+    minimap = new MinimapRenderer(minimapCanvas);
+
+    await new Promise(r => setTimeout(r, 10));
+    gridClient = new GridClient(sceneManager, authToken, window.location.origin,
+      (from, msg) => addChatMessage(from, msg),
+      (x, y, z) => { positionDisplay.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}`; minimap?.setPlayerPosition(x, y); },
+      undefined,
+      (id, name, online) => { friends.set(id, { id, name, online }); renderFriends(); },
+      (from, msg, fid) => { addIMMessage(from, msg, fid); },
+      (x, y, h) => { minimap?.updatePatch(x, y, h); },
+      (rname, rx, ry) => { regionName.textContent = `☀ ${rname}`; parcelName.textContent = `(${rx}, ${ry})`; },
+      (pname, area) => { parcelName.textContent = pname; },
+      (balance) => { currencyDisplay.textContent = `${currencySym} ${balance.toLocaleString()}`; },
+      (sym) => { currencySym = sym; currencyDisplay.textContent = `${sym} ${currencyDisplay.textContent?.replace(/^[^\d]*\s*/, '') || '0'}`; },
+      (otherId, otherName, messages) => {
+        if (!convos.has(otherId)) convos.set(otherId, { friendId: otherId, friendName: otherName, messages: [], unread: 0 });
+        const conv = convos.get(otherId)!;
+        for (const m of messages) {
+          conv.messages.push({ from: m.from, text: m.text, time: new Date(m.time) });
+        }
+        renderFriends();
+      },
+    );
+
     showPreloader('Connecting to grid...');
-    // Add timeout to prevent infinite hang
+    // Timeout: 15s for SignalR, then 30s for grid login
     const connectTimeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Connection timed out — is the grid running?')), 15000)
+      setTimeout(() => reject(new Error('SignalR connection timed out')), 15000)
     );
     await Promise.race([gridClient.start(), connectTimeout]);
-    showPreloader('Entering world...');
+    console.log('[Grid] SignalR connected, invoking ConnectAvatar...');
+    showPreloader('Logging into grid (may take a moment)...');
+
     const avatarTimeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Avatar connection timed out')), 15000)
+      setTimeout(() => reject(new Error('Grid login timed out — the grid may be offline')), 30000)
     );
     await Promise.race([gridClient.connectAvatar(selectedAvatarId), avatarTimeout]);
     hidePreloader();
@@ -259,6 +275,8 @@ connectBtn.addEventListener('click', async () => {
   } catch (err) {
     console.error('Connect failed:', err);
     hidePreloader();
+    connectBtn.disabled = false;
+    connectBtn.textContent = 'Enter World';
     addChatMessage('System', `Connection failed: ${(err as Error).message || 'Unknown error'}. Is the I-Grid server running?`);
     showError(`Connection failed: ${(err as Error).message || 'Unknown error'}`);
     // Still show world UI so user can see the error
