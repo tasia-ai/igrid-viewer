@@ -25,12 +25,17 @@
     #viewport { width:100vw; height:100vh; display:block; position:absolute; top:0; left:0; z-index:0; }
 
     /* === LOGIN === */
-    #login-panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(20,30,50,0.95); padding:2rem; border-radius:10px; min-width:320px; border:1px solid rgba(100,160,220,0.3); z-index:100; box-shadow:0 0 40px rgba(0,0,0,0.5); }
-    #login-panel h2 { text-align:center; color:#6ab0ff; margin-bottom:1.2rem; font-size:1.6rem; }
-    #login-panel input { margin-bottom:0.6rem; font-size:0.9rem; }
-    .login-warning { background:rgba(255,193,7,0.12); border:1px solid rgba(255,193,7,0.3); border-radius:5px; padding:6px 10px; margin-bottom:1rem; font-size:0.72rem; color:#ffc107; }
+    #login-panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(15,20,35,0.97); padding:2rem 2.5rem; border-radius:12px; min-width:380px; border:1px solid rgba(100,160,220,0.4); z-index:100; box-shadow:0 0 60px rgba(0,0,0,0.7); }
+    #login-panel h2 { text-align:center; color:#6ab0ff; margin-bottom:1.2rem; font-size:1.8rem; }
+    #login-panel input { margin-bottom:0.8rem; font-size:1rem; padding:10px 12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#e0e0e0; border-radius:6px; }
+    #login-panel input:focus { border-color:#6ab0ff; outline:none; background:rgba(255,255,255,0.1); }
+    #login-panel input::placeholder { color:#667; }
+    .login-warning { background:rgba(255,193,7,0.12); border:1px solid rgba(255,193,7,0.3); border-radius:5px; padding:8px 12px; margin-bottom:1rem; font-size:0.8rem; color:#ffc107; }
     .login-toggle { text-align:center; margin-top:0.8rem; }
-    .login-toggle a { color:#6ab0ff; font-size:0.8rem; text-decoration:none; }
+    .login-toggle a { color:#6ab0ff; font-size:0.85rem; text-decoration:none; }
+    .login-toggle a:hover { text-decoration:underline; }
+    .login-submit { margin-top:0.8rem; padding:12px; font-size:1.05rem; font-weight:600; letter-spacing:1px; background:linear-gradient(135deg, #3a7bd5, #6ab0ff); border:none; border-radius:6px; color:white; cursor:pointer; transition:all 0.2s; }
+    .login-submit:hover { background:linear-gradient(135deg, #2a6bc5, #5aa0ef); transform:translateY(-1px); box-shadow:0 4px 12px rgba(58,123,213,0.3); }
     /* Firestorm-style login */
     .login-header { text-align:center; margin-bottom:1.5rem; }
     .login-logo { font-size:2rem; color:#6ab0ff; font-weight:700; letter-spacing:3px; }
@@ -44,8 +49,8 @@
     #login-panel { min-width:360px; }
 
     /* === AVATAR PANEL === */
-    #avatar-panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(20,30,50,0.95); padding:1.5rem; border-radius:10px; min-width:320px; border:1px solid rgba(100,160,220,0.3); z-index:100; }
-    #avatar-panel h3 { color:#6ab0ff; margin-bottom:0.8rem; font-size:1.1rem; }
+    #avatar-panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(15,20,35,0.97); padding:1.5rem 2rem; border-radius:12px; min-width:380px; border:1px solid rgba(100,160,220,0.4); z-index:100; }
+    #avatar-panel h3 { color:#6ab0ff; margin-bottom:0.8rem; font-size:1.2rem; }
     #avatar-list { list-style:none; padding:0; max-height:200px; overflow-y:auto; }
     #avatar-list li { padding:6px 10px; margin-bottom:3px; background:rgba(255,255,255,0.04); border-radius:5px; cursor:pointer; border:1px solid transparent; font-size:0.85rem; }
     #avatar-list li:hover { background:rgba(100,160,220,0.1); border-color:rgba(100,160,220,0.2); }
@@ -147,7 +152,7 @@
 
     /* === TELEPORT BAR === */
     #teleport-bar {
-      position:absolute; bottom:8px; left:50%; transform:translateX(-50%); z-index:25;
+      position:absolute; bottom:56px; left:50%; transform:translateX(-50%); z-index:25;
       display:none;
     }
     #teleport-form { display:flex; gap:4px; }
@@ -161,6 +166,15 @@
     ::-webkit-scrollbar { width:4px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:2px; }
+
+    /* Override bootstrap form controls for dark theme */
+    .form-control { background:rgba(255,255,255,0.08) !important; border:1px solid rgba(255,255,255,0.15) !important; color:#e0e0e0 !important; font-size:0.9rem !important; border-radius:6px !important; }
+    .form-control:focus { border-color:#6ab0ff !important; outline:none !important; background:rgba(255,255,255,0.1) !important; color:white !important; }
+    .form-control::placeholder { color:#667 !important; }
+
+    /* Override bootstrap buttons for dark theme */
+    .btn-primary { background:linear-gradient(135deg, #3a7bd5, #6ab0ff) !important; border:none !important; color:white !important; font-size:1rem !important; padding:10px !important; border-radius:6px !important; }
+    .btn-primary:hover { background:linear-gradient(135deg, #2a6bc5, #5aa0ef) !important; }
 
     /* TOOLBAR */
     .tool-btn {
@@ -262,7 +276,7 @@
     }
     #im-chat-send:hover { background:linear-gradient(135deg,#2a6bc5,#3a7ad5); }
   </style>
-  <script type="module" crossorigin src="/assets/main.js?v=7"></script>
+  <script type="module" crossorigin src="/assets/index-Cjl8kEsO.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-BSmB-BSc.css">
 </head>
 <body>
