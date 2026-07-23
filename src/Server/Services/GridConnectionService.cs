@@ -15,7 +15,7 @@ public class GridConnectionService
     private readonly AppDbContext _db;
     private readonly ConcurrentDictionary<int, GridSession> _sessions = new();
 
-    private const string GridLoginUri = "https://i.let-us.cyou:8002/";
+    private const string DefaultGridLoginUri = "https://i.let-us.cyou:8002/";
     private const string ClientName = "I-Grid Web Viewer";
     private const string ClientVersion = "0.1.0";
 
@@ -28,9 +28,10 @@ public class GridConnectionService
     /// Connect an avatar to the grid. Verifies user ownership.
     /// Uses synchronous Login() + LoginProgress event for result.
     /// </summary>
-    public Task<GridSession?> ConnectAvatarAsync(int userId, int avatarId)
+    public Task<GridSession?> ConnectAvatarAsync(int userId, int avatarId, string? gridUrl = null)
     {
-        Console.WriteLine($"[Grid] ConnectAvatar called: userId={userId}, avatarId={avatarId}");
+        var loginUri = string.IsNullOrWhiteSpace(gridUrl) ? DefaultGridLoginUri : gridUrl.TrimEnd('/') + "/";
+        Console.WriteLine($"[Grid] ConnectAvatar called: userId={userId}, avatarId={avatarId}, grid={loginUri}");
 
         var avatar = _db.Avatars
             .FirstOrDefault(a => a.Id == avatarId && a.UserId == userId && a.IsActive);
@@ -85,9 +86,9 @@ public class GridConnectionService
             ClientName,
             ClientVersion);
 
-        loginParams.URI = GridLoginUri;
+        loginParams.URI = loginUri;
 
-        Console.WriteLine($"[Grid] Starting login: {avatar.FirstName} {avatar.LastName} @ {GridLoginUri}");
+        Console.WriteLine($"[Grid] Starting login: {avatar.FirstName} {avatar.LastName} @ {loginUri}");
 
         // Begin async login (non-blocking, fires LoginProgress when done)
         client.Network.BeginLogin(loginParams);

@@ -189,39 +189,10 @@
       <div class="login-subtitle">Web Viewer</div>
     </div>
     <form id="login-form">
-      <!-- Grid Selector -->
-      <div class="login-field">
-        <label>Grid</label>
-        <select id="grid-select" class="form-control">
-          <option value="i.let-us.cyou">I-Grid (i.let-us.cyou)</option>
-          <option value="osgrid.org">OSGrid (osgrid.org)</option>
-          <option value="secondlife.com">Second Life (secondlife.com)</option>
-          <option value="custom">Custom grid...</option>
-        </select>
-      </div>
-      <div class="login-field" id="custom-grid-field" style="display:none">
-        <label>Grid URL</label>
-        <input id="custom-grid-url" class="form-control" placeholder="https://grid.example.com:8002/">
-      </div>
-      
-      <!-- Start Location -->
-      <div class="login-field">
-        <label>Start Location</label>
-        <select id="start-location" class="form-control">
-          <option value="home">My Home</option>
-          <option value="last">Last Location</option>
-          <option value="region">Specific Region...</option>
-        </select>
-      </div>
-      <div class="login-field" id="region-field" style="display:none">
-        <label>Region Name</label>
-        <input id="start-region" class="form-control" placeholder="Region Name">
-      </div>
-
       <!-- Credentials -->
       <div class="login-field">
         <label>Username</label>
-        <input id="username" class="form-control" placeholder="First Last" required>
+        <input id="username" class="form-control" placeholder="Username" required>
       </div>
       <div class="login-field">
         <label>Password</label>
@@ -263,6 +234,35 @@
       <button id="create-avatar-btn" class="btn btn-sm-action w-100 mt-1">Create Avatar</button>
       <div id="avatar-create-error" style="color:#ef5350;font-size:0.75rem;margin-top:3px;display:none"></div>
     </div>
+    <!-- Grid & Start Location -->
+    <div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid rgba(255,255,255,0.08)">
+      <div class="login-field">
+        <label>Grid</label>
+        <select id="grid-select" class="form-control" style="font-size:0.8rem">
+          <option value="i.let-us.cyou">I-Grid (i.let-us.cyou)</option>
+          <option value="osgrid.org">OSGrid (osgrid.org)</option>
+          <option value="secondlife.com">Second Life (secondlife.com)</option>
+          <option value="custom">Custom grid...</option>
+        </select>
+      </div>
+      <div class="login-field" id="custom-grid-field" style="display:none">
+        <label>Grid URL</label>
+        <input id="custom-grid-url" class="form-control" placeholder="https://grid.example.com:8002/" style="font-size:0.8rem">
+      </div>
+      <div class="login-field">
+        <label>Start Location</label>
+        <select id="start-location" class="form-control" style="font-size:0.8rem">
+          <option value="home">My Home</option>
+          <option value="last">Last Location</option>
+          <option value="region">Specific Region...</option>
+        </select>
+      </div>
+      <div class="login-field" id="region-field" style="display:none">
+        <label>Region Name</label>
+        <input id="start-region" class="form-control" placeholder="Region Name" style="font-size:0.8rem">
+      </div>
+    </div>
+
     <button id="connect-btn" class="btn btn-primary w-100 mt-2" disabled>Enter World</button>
   </div>
 

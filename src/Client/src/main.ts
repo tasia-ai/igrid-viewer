@@ -272,10 +272,20 @@ connectBtn.addEventListener('click', async () => {
     console.log('[Grid] SignalR connected, invoking ConnectAvatar...');
     showPreloader('Logging into grid (may take a moment)...');
 
+    // Read grid & location selections
+    const gridVal = (document.getElementById('grid-select') as HTMLSelectElement)?.value;
+    const gridUrl = gridVal === 'custom'
+      ? (document.getElementById('custom-grid-url') as HTMLInputElement)?.value || undefined
+      : gridVal ? `https://${gridVal}:8002/` : undefined;
+    const locVal = (document.getElementById('start-location') as HTMLSelectElement)?.value;
+    const regionVal = locVal === 'region' ? (document.getElementById('start-region') as HTMLInputElement)?.value : undefined;
+    const startLoc = locVal === 'region' && regionVal ? `uri:${regionVal}` : locVal === 'last' ? 'last' : undefined;
+
+    console.log('[Grid] Connect:', { gridUrl, startLoc, regionVal });
     const avatarTimeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Grid login timed out — the grid may be offline')), 30000)
     );
-    await Promise.race([gridClient.connectAvatar(selectedAvatarId), avatarTimeout]);
+    await Promise.race([gridClient.connectAvatar(selectedAvatarId, gridUrl, startLoc, regionVal), avatarTimeout]);
     hidePreloader();
     showWorldUI();
     sceneManager.animate((delta) => {

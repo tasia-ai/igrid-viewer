@@ -468,8 +468,8 @@ export class GridClient {
   /**
    * Request to connect an avatar to the grid.
    */
-  async connectAvatar(avatarId: number): Promise<void> {
-    await this.connection.invoke('ConnectAvatar', avatarId);
+  async connectAvatar(avatarId: number, gridUrl?: string, startLocation?: string, regionName?: string): Promise<void> {
+    await this.connection.invoke('ConnectAvatar', avatarId, gridUrl || null, startLocation || null, regionName || null);
   }
 
   /**

@@ -31,10 +31,10 @@ public class ViewerHub : Hub
         return user?.PasswordHash ?? "fallback-key";
     }
 
-    public async Task ConnectAvatar(int avatarId)
+    public async Task ConnectAvatar(int avatarId, string? gridUrl = null, string? startLocation = null, string? startRegion = null)
     {
-        Console.WriteLine($"[ViewerHub] ConnectAvatar: avatarId={avatarId}");
-        var session = await _grid.ConnectAvatarAsync(UserId, avatarId);
+        Console.WriteLine($"[ViewerHub] ConnectAvatar: avatarId={avatarId}, grid={gridUrl ?? "default"}, location={startLocation ?? "home"}");
+        var session = await _grid.ConnectAvatarAsync(UserId, avatarId, gridUrl);
         if (session == null) { await Clients.Caller.SendAsync("Error", "Failed to connect avatar"); return; }
 
         var caller = Clients.Caller;
