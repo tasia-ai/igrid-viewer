@@ -13,7 +13,7 @@ namespace IGrid.Server.Services;
 public class GridConnectionService
 {
     private readonly AppDbContext _db;
-    private readonly ConcurrentDictionary<int, GridSession> _sessions = new();
+    private static readonly ConcurrentDictionary<int, GridSession> _sessions = new();
 
     private const string DefaultGridLoginUri = "https://i.let-us.cyou:8002/";
     private const string ClientName = "I-Grid Web Viewer";
