@@ -1,262 +1,259 @@
-# I-Grid Viewer — Plan rozwoju do pełnego Firestorm
+# I-Grid Viewer — Development Plan to Full Firestorm
 
-## Status obecny
-✅ Działa: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping), avatar attachments (58 SL attachment points), profile cards, group system (list/chat/notices), object interaction (sit/touch/pay), inventory browser (folder tree, search, wear/rez), appearance editor (wearables + visual params + bake), HUD rendering (orthographic camera pass)**
+## Current Status
+✅ Working: 3D scene, terrain, prims, mesh, chat, IM, friends, minimap, camera d-pad, teleport, preloader, reconnect, draw distance, Doritos currency, region/parcel info, account management, **sky shader (gradient + sun disc + glow + horizon), sky presets (day/sunset/night/mars), day/night cycle, PBR water, fog synced to draw distance, WindlightSettings from server, 3D positional audio (Web Audio API + HRTF panner), particle effects (spark/fire/smoke/glow/ring via THREE.Points), flexible prims (vertex displacement with spring physics), object sound tracking, procedural footsteps, ambient sound API, avatar animations (walk/fly/sit/idle with SL UUID mapping), avatar attachments (58 SL attachment points), profile cards, group system (list/chat/notices), object interaction (sit/touch/pay), inventory browser (folder tree, search, wear/rez), appearance editor (wearables + visual params + bake), HUD rendering (orthographic camera pass)**
 
-## FAZA 1 — Świat żyje (wizualnie)
+## PHASE 1 — Living World (Visual)
 
 ### 1.1 Environment / Windlight / EEP
-- [x] Sky shader (gradient + słońce) — `Environment.ts` (690 linii): 3-stop sky gradient, sun disc, sun glow/halo, horizon glow, moon disc, GLSL shader
-- [x] Cykl dzień/noc — `setDayNightCycle()`, timeOfDay interpolation, automatic cycle advancement
-- [x] Woda z PBR (reflection, transparency) — waterColor, waterOpacity, waterHeight w WindlightSettings
-- [x] Fog depth adjustowany do draw distance — `setFogForDrawDistance()` scales fog near/far proportionally
+- [x] Sky shader (gradient + sun) — `Environment.ts` (690 lines): 3-stop sky gradient, sun disc, sun glow/halo, horizon glow, moon disc, GLSL shader
+- [x] Day/night cycle — `setDayNightCycle()`, timeOfDay interpolation, automatic cycle advancement
+- [x] PBR water (reflection, transparency) — waterColor, waterOpacity, waterHeight in WindlightSettings
+- [x] Fog depth adjusted to draw distance — `setFogForDrawDistance()` scales fog near/far proportionally
 - [x] Sky presets (day, sunset, night, mars) — `SKY_PRESETS` record + `setPreset()` API + UI selector
-- [x] Serwer: `EnvironmentUpdate` event z `OpenMetaverse.WindlightSettings` — `ViewerHub.cs` EmitEnvironmentUpdate()
-- Plik: `src/Client/src/engine/Environment.ts`
-- Serwer: `EnvironmentUpdate` event z `OpenMetaverse.WindlightSettings`
+- [x] Server: `EnvironmentUpdate` event with `OpenMetaverse.WindlightSettings` — `ViewerHub.cs` EmitEnvironmentUpdate()
+- File: `src/Client/src/engine/Environment.ts`
+- Server: `EnvironmentUpdate` event with `OpenMetaverse.WindlightSettings`
 
 ### 1.2 Particle Effects
-- [x] UDP `ParticleUpdate` → Three.js `Points` / `Sprite` — `ParticleSystem.ts` (320 linii): BufferGeometry + PointsMaterial, GPU-efficient
-- [x] System: pozycja, kolor, rozmiar, prędkość, TTL — lerp size/color based on age, burst emission
-- [x] Typy: spark, fire, smoke, glow, ring — procedural textures per pattern, AdditiveBlending
-- [x] Serwer: forwarduje `prim.ParticleSys` via SignalR `ParticleSystemUpdate` event
-- Plik: `src/Client/src/engine/ParticleSystem.ts`
-- Serwer: subskrypcja `client.Objects.ObjectUpdate` + `prim.ParticleSys` data
+- [x] UDP `ParticleUpdate` → Three.js `Points` / `Sprite` — `ParticleSystem.ts` (320 lines): BufferGeometry + PointsMaterial, GPU-efficient
+- [x] System: position, color, size, speed, TTL — lerp size/color based on age, burst emission
+- [x] Types: spark, fire, smoke, glow, ring — procedural textures per pattern, AdditiveBlending
+- [x] Server: forwards `prim.ParticleSys` via SignalR `ParticleSystemUpdate` event
+- File: `src/Client/src/engine/ParticleSystem.ts`
+- Server: subscribes to `client.Objects.ObjectUpdate` + `prim.ParticleSys` data
 
 ### 1.3 Flexible Prims
-- [x] Flexi-enabled prims (flagi, włosy, tkanina) — `FlexibleRenderer.ts` (180 linii): spring physics simulation, per-vertex displacement
+- [x] Flexi-enabled prims (flags, hair, fabric) — `FlexibleRenderer.ts` (180 lines): spring physics simulation, per-vertex displacement
 - [x] Vertex displacement based on wind/physics — Hooke's law + gravity + drag + wind force
-- [x] Segment count z PrimData.PathRevolutions — calculated from path data
-- [x] Serwer: forwarduje `prim.Flexible` via SignalR `FlexibleUpdate` event
-- Plik: `src/Client/src/engine/FlexibleRenderer.ts`
+- [x] Segment count from PrimData.PathRevolutions — calculated from path data
+- [x] Server: forwards `prim.Flexible` via SignalR `FlexibleUpdate` event
+- File: `src/Client/src/engine/FlexibleRenderer.ts`
 
 ### 1.4 Sound Effects
-- [x] 3D positional audio via Web Audio API — `SoundManager.ts` (350 linii): HRTF PannerNode, AudioBuffer cache
+- [x] 3D positional audio via Web Audio API — `SoundManager.ts` (350 lines): HRTF PannerNode, AudioBuffer cache
 - [x] Ambient sounds (region environment) — `playAmbient()` API, non-positional, loops forever
 - [x] Object sounds (PreloadSound, AttachedSound events) — position tracked from ObjectUpdate, auto-follows object
 - [x] Footstep sounds — procedural synthesis (thump + noise), 300ms cooldown, `setMoving()` API
 - [x] Object sound position tracking — `updateSoundPosition()` called on every ObjectUpdate
 - [x] Master volume control — `setMasterVolume()` API
-- Plik: `src/Client/src/engine/SoundManager.ts`
-- Serwer: `client.Self.ChatFromSimulator` + `AttachedSound` events
+- File: `src/Client/src/engine/SoundManager.ts`
+- Server: `client.Self.ChatFromSimulator` + `AttachedSound` events
 
 ---
 
-## FAZA 2 — Ludzie (social)
+## PHASE 2 — People (Social)
 
 ### 2.1 Avatar Animations
-- [x] Fetch animation assets z gridu (RequestAsset) — SL UUID mapping to animation names
+- [x] Fetch animation assets from grid (RequestAsset) — SL UUID mapping to animation names
 - [x] Skeleton skinning matrix updates per frame — procedural body part rotation
-- [x] Animacje: idle, walk, fly, sit, gesture — `AnimationSystem.ts` (280 linii)
+- [x] Animations: idle, walk, fly, sit, gesture — `AnimationSystem.ts` (280 lines)
 - [x] Bento joints (additional bones) — extensible keyframe system
-- [x] Serwer: forwarduje `client.Objects.ObjectAnimation` + `client.Self.AnimationsChanged` via SignalR
-- Plik: `src/Client/src/engine/AnimationSystem.ts`
-- Serwer: `client.Objects.AvatarAnimation` event
+- [x] Server: forwards `client.Objects.ObjectAnimation` + `client.Self.AnimationsChanged` via SignalR
+- File: `src/Client/src/engine/AnimationSystem.ts`
+- Server: `client.Objects.AvatarAnimation` event
 
 ### 2.2 Avatar Attachments
-- [x] Attachment points (58 SL points) — `AttachmentRenderer.ts` (280 linii): 58 attachment point positions mapped to body parts
+- [x] Attachment points (58 SL points) — `AttachmentRenderer.ts` (280 lines): 58 attachment point positions mapped to body parts
 - [x] Attachment objects position tracking — relative to avatar group, updates each frame
 - [x] Attach/detach events — server forwards `AttachmentUpdate` via SignalR with attachment point lookup
 - [x] Server: tracks avatar attachments via `AvatarUpdate` events, resolves attachment point from parent avatar
-- Plik: `src/Client/src/engine/AttachmentRenderer.ts`
+- File: `src/Client/src/engine/AttachmentRenderer.ts`
 
 ### 2.3 Profile Cards
-- [x] Fetch agent profile (bio, picks, groups, friends, online) — `ProfilePanel.ts` (180 linii): avatar icon, name, bio, profile image, online status
+- [x] Fetch agent profile (bio, picks, groups, friends, online) — `ProfilePanel.ts` (180 lines): avatar icon, name, bio, profile image, online status
 - [x] Display panel (avatar click → profile popup) — fixed position with backdrop blur
-- Plik: `src/Client/src/ui/ProfilePanel.ts`
-- Serwer: `RequestProfile` hub method fetches AvatarProperties via LibreMetaverse
+- File: `src/Client/src/ui/ProfilePanel.ts`
+- Server: `RequestProfile` hub method fetches AvatarProperties via LibreMetaverse
 
 ### 2.4 Group System
-- [x] Group list (Groups tab w contacts) — `GroupPanel.ts` (310 linii): tabbed UI with list/notices/chat
+- [x] Group list (Groups tab in contacts) — `GroupPanel.ts` (310 lines): tabbed UI with list/notices/chat
 - [x] Group chat (group channel) — server forwards ChatFromSimulator events via SignalR
 - [x] Group title display — active group title displayed in panel
 - [x] Group notices — server forwards GroupNoticesListReply events
-- Plik: `src/Client/src/ui/GroupPanel.ts`
-- Serwer: `client.Groups.CurrentGroups` + `client.Groups.GroupNoticesListReply` + `client.Self.ChatFromSimulator`
+- File: `src/Client/src/ui/GroupPanel.ts`
+- Server: `client.Groups.CurrentGroups` + `client.Groups.GroupNoticesListReply` + `client.Self.ChatFromSimulator`
 
 ---
 
-## FAZA 3 — Interakcja
+## PHASE 3 — Interaction
 
 ### 3.1 Object Interaction
-- [ ] Click → RequestSit / Touch / Pay
-- [ ] Sit on chairs/objects (avatar attaches to object)
-- [ ] Touch objects (ClickAction)
-- [ ] Pay objects (MoneyBalance)
-- Plik: `src/Client/src/engine/InteractionManager.ts` ← NIE ISTNIEJE
-- Serwer: `client.Self.RequestSit()`, `client.Self.Touch()`
+- [x] Click → RequestSit / Touch / Pay
+- [x] Sit on chairs/objects (avatar attaches to object)
+- [x] Touch objects (ClickAction)
+- [x] Pay objects (MoneyBalance)
+- File: `src/Client/src/engine/InteractionManager.ts`
+- Server: `client.Self.RequestSit()`, `client.Self.Touch()`
 
 ### 3.2 Inventory System
-- [x] Folder tree (browse categories) — `InventoryPanel.ts` (400 linii): folder tree with icons, expand/collapse, search
+- [x] Folder tree (browse categories) — `InventoryPanel.ts` (400 lines): folder tree with icons, expand/collapse, search
 - [x] Drag-drop wear (add clothing) — context menu with Wear option, server WearItem hub method
 - [x] Rez objects from inventory — double-click to rez, server RezObject hub method
 - [x] Take/drop objects — server TakeObject hub method (DeRezToInventory)
 - [x] Search inventory — search bar filters items by name in real-time
 - [x] Notecards, landmarks, scripts — folder icons for all asset types, item type display
-- Plik: `src/Client/src/ui/InventoryPanel.ts`
-- Serwer: `client.Inventory` (Store, RequestRezFromInventory, RequestDeRezToInventory, WearOutfit)
+- File: `src/Client/src/ui/InventoryPanel.ts`
+- Server: `client.Inventory` (Store, RequestRezFromInventory, RequestDeRezToInventory, WearOutfit)
 
 ### 3.3 Appearance System
-- [x] Wearable editor (shape, skin, hair, eyes, shirt, pants, etc.) — `AppearanceEditor.ts` (400 linii): 14 wearable slots, context-aware panel
+- [x] Wearable editor (shape, skin, hair, eyes, shirt, pants, etc.) — `AppearanceEditor.ts` (400 lines): 14 wearable slots, context-aware panel
 - [x] Visual param sliders — 32+ SL visual params (shape, hair), real-time slider adjustment with label display
 - [x] Bake trigger → upload baked texture — Bake & Save button, server RequestSetAppearance(true)
-- Plik: `src/Client/src/ui/AppearanceEditor.ts`
-- Serwer: `client.Appearance.RequestSetAppearance(true)`, visual param tracking (client-side for now)
+- File: `src/Client/src/ui/AppearanceEditor.ts`
+- Server: `client.Appearance.RequestSetAppearance(true)`, visual param tracking (client-side for now)
 
 ### 3.4 HUD Attachments
-- [x] Special camera pass for HUD objects — `HUDRenderer.ts` (210 linii): separate orthographic camera, viewport save/restore
+- [x] Special camera pass for HUD objects — `HUDRenderer.ts` (210 lines): separate orthographic camera, viewport save/restore
 - [x] Fixed screen position rendering — 10 HUD attachment points (Center, Top, Bottom, Left, Right, etc.)
 - [x] 58 attachment points (HUD-specific) — isHUDPoint() detection, separate scene for HUD rendering
-- Plik: `src/Client/src/engine/HUDRenderer.ts`
-- Integracja: `GridClient.hudRenderer` — render() called after main scene
+- File: `src/Client/src/engine/HUDRenderer.ts`
+- Integration: `GridClient.hudRenderer` — render() called after main scene
 
 ---
 
-## FAZA 4 — Tworzenie i odkrywanie
+## PHASE 4 — Creation and Exploration
 
 ### 4.1 Search System
-- [x] People search (`DirectoryManager.StartPeopleSearch`) — `SearchPanel.ts` (350 linii): tabbed search UI with 5 categories
+- [x] People search (`DirectoryManager.StartPeopleSearch`) — `SearchPanel.ts` (350 lines): tabbed search UI with 5 categories
 - [x] Places search (`DirectoryManager.StartPlacesSearch`) — server forwards DirPlacesReply events
 - [x] Events search — server forwards DirEventsReply events
 - [x] Classifieds — server forwards DirClassifiedsReply events
-- Plik: `src/Client/src/ui/SearchPanel.ts`
-- Serwer: `client.Directory` API (SearchPeople/Places/Events/Groups/Classifieds hub methods)
+- File: `src/Client/src/ui/SearchPanel.ts`
+- Server: `client.Directory` API (SearchPeople/Places/Events/Groups/Classifieds hub methods)
 
 ### 4.2 Build/Edit Tools
 - [x] Create objects (rez) — BuildTools enters create mode for rez placement
 - [x] Select/Edit objects — raycasting-based selection with object highlight
 - [x] Move/Rotate/Scale gizmo — THREE.js TransformControls integration
 - [x] Texture picker (pipette) — EditWindow Texture tab with face selector
-- [x] Edit window (General/Features/Media/Texture tabs) — `EditWindow` class (200 linii) with tabbed UI
+- [x] Edit window (General/Features/Media/Texture tabs) — `EditWindow` class (200 lines) with tabbed UI
 - [x] Permissions editor — EditWindow Permissions tab (copy/modify/transfer checkboxes)
-- Plik: `src/Client/src/engine/BuildTools.ts`
+- File: `src/Client/src/engine/BuildTools.ts`
 
 ### 4.3 Land/Parcel Tools
-- [x] Buy/Sell parcels — `LandTools.ts` (320 linii): Buy/Sell buttons with parcel info display
+- [x] Buy/Sell parcels — `LandTools.ts` (320 lines): Buy/Sell buttons with parcel info display
 - [x] Subdivide/Join parcels — Subdivide/Join buttons in land tools panel
 - [x] Set access/ban list — Access/Ban buttons for parcel management
 - [x] Terraform (terrain brush) — terrain brush with size/strength sliders
 - [x] Set home point — Set Home button for parcel home point
-- Plik: `src/Client/src/ui/LandTools.ts`
+- File: `src/Client/src/ui/LandTools.ts`
 
 ### 4.4 World Map (full)
-- [x] Map tiles from grid — `WorldMap.ts` (350 linii): canvas-based region grid rendering
+- [x] Map tiles from grid — `WorldMap.ts` (350 lines): canvas-based region grid rendering
 - [x] Parcel overlay — colored rectangles for parcels with sale info
 - [x] Region grid — grid lines with region names, access status (open/locked/offline)
 - [x] Teleport by click — click region to teleport, zoom/pan with mouse wheel
-- Plik: `src/Client/src/ui/WorldMap.ts`
+- File: `src/Client/src/ui/WorldMap.ts`
 
 ### 4.5 Media/Music Streaming
-- [x] Parcel music (SHOUTcast/Icecast → Web Audio API) — `MediaManager.ts` (280 linii): AudioContext + MediaElementSource + GainNode
+- [x] Parcel music (SHOUTcast/Icecast → Web Audio API) — `MediaManager.ts` (280 lines): AudioContext + MediaElementSource + GainNode
 - [x] Media textures (HTML5 iframe overlay) — addMediaTexture/removeMediaTexture with sandboxed iframes
 - [x] Volume controls — setVolume/togglePlayPause with GainNode
 - [x] Stream title display — floating UI with stream name and close button
-- Plik: `src/Client/src/engine/MediaManager.ts`
-- Serwer: ParcelMediaCommand events (low-level packet, client-side MediaManager handles playback)
+- File: `src/Client/src/engine/MediaManager.ts`
+- Server: ParcelMediaCommand events (low-level packet, client-side MediaManager handles playback)
 
 ### 4.6 Voice Chat
-- [x] WebRTC implementation — `VoiceChat.ts` (320 linii): AudioContext, MediaStream, RTCPeerConnection
-- [x] **OPCJA WYŁĄCZENIA (domyślnie OFF)** — `enabled:false` w configu, user musi świadomie włączyć, preferencja zapisywana w localStorage
-- Plik: `src/Client/src/engine/VoiceChat.ts`
+- [x] WebRTC implementation — `VoiceChat.ts` (320 lines): AudioContext, MediaStream, RTCPeerConnection
+- [x] **DISABLE OPTION (default OFF)** — `enabled:false` in config, user must consciously enable, preference saved to localStorage
+- File: `src/Client/src/engine/VoiceChat.ts`
 
 ---
 
-## FAZA 5 — Power Users
+## PHASE 5 — Power Users
 
 ### 5.1 Script Editor
-- [x] LSL syntax highlighting — `ScriptEditor.ts` (350 linii): keywords/events/types/constants/colors
+- [x] LSL syntax highlighting — `ScriptEditor.ts` (350 lines): keywords/events/types/constants/colors
 - [x] Compile/Debug — console panel, compile results from server via ScriptUpdatedCallback
-- Plik: `src/Client/src/ui/ScriptEditor.ts`
+- File: `src/Client/src/ui/ScriptEditor.ts`
 
 ### 5.2 Notecard Editor
-- [x] Plain text editing — `NotecardEditor.ts` (180 linii): monospace textarea, char count, modify tracking
+- [x] Plain text editing — `NotecardEditor.ts` (180 lines): monospace textarea, char count, modify tracking
 - [x] Save changes — Save button with server SaveNotecard hub method
-- Plik: `src/Client/src/ui/NotecardEditor.ts`
+- File: `src/Client/src/ui/NotecardEditor.ts`
 
 ### 5.3 Upload Tools
-- [x] Texture upload — `UploadTools.ts` (200 linii): drag & drop file picker, name/description inputs
+- [x] Texture upload — `UploadTools.ts` (200 lines): drag & drop file picker, name/description inputs
 - [x] Sound upload — same UI, type selector (texture/sound/animation/mesh)
 - [x] Animation upload — same UI, accepts .bvh/.anim
 - [x] Mesh model upload — same UI, accepts .dae/.obj/.fbx
-- Plik: `src/Client/src/ui/UploadTools.ts`
+- File: `src/Client/src/ui/UploadTools.ts`
 
 ### 5.4 Snapshot Tools (CUSTOM — I-Grid + TasiaFeed)
-- [ ] Capture 3D scene → canvas.toDataURL() / toBlob()
-- [ ] Upload POST do `https://apps.easierit.org/igrid/feed/api/v1/snapshots/upload.php`
-  ### 5.4 Snapshot Tools (CUSTOM — I-Grid + TasiaFeed)
-  - [x] Capture 3D scene → canvas.toDataURL() / toBlob() — `SnapshotTools.ts` (320 linii): WebGLRenderer capture
-  - [x] Upload POST do `https://apps.easierit.org/igrid/feed/api/v1/snapshots/upload.php` — full API integration
-  - [x] Display w feedzie: `https://apps.easierit.org/igrid/feed/` — post URL returned from API
-  - [ ] Custom UI design (dokumentacja od Marty)
-  - [x] Camera angle selection (front, back, top, custom) — 4 preset angles
-  - [x] Resolution/format options — PNG/JPEG/WebP, quality slider
-  - Plik: `src/Client/src/ui/SnapshotTools.ts`
-  - Backend: TasiaFeed PHP (już istnieje na apps.easierit.org)
+- [x] Capture 3D scene → canvas.toDataURL() / toBlob() — `SnapshotTools.ts` (320 lines): WebGLRenderer capture
+- [x] Upload POST to `https://apps.easierit.org/igrid/feed/api/v1/snapshots/upload.php` — full API integration
+- [x] Display in feed: `https://apps.easierit.org/igrid/feed/` — post URL returned from API
+- [ ] Custom UI design (documentation from Marty)
+- [x] Camera angle selection (front, back, top, custom) — 4 preset angles
+- [x] Resolution/format options — PNG/JPEG/WebP, quality slider
+- File: `src/Client/src/ui/SnapshotTools.ts`
+- Backend: TasiaFeed PHP (already exists on apps.easierit.org)
 
 ---
 
-## FAZA 6 — Chat Media (Giphy + YouTube)
+## PHASE 6 — Chat Media (Giphy + YouTube)
 
-### 6.1 YouTube Embed w chat
-- [x] Wykrywanie URL YouTube w wiadomościach chat/IM (regex: youtube.com/watch?v=... lub youtu.be/...) — `ChatMedia.ts` (250 linii)
+### 6.1 YouTube Embed in Chat
+- [x] YouTube URL detection in chat/IM messages (regex: youtube.com/watch?v=... or youtu.be/...) — `ChatMedia.ts` (250 lines)
 - [x] Auto-embed player: `https://apps.easierit.org/igrid/youtube-player/?v=VIDEO_ID` — thumbnail + play button
-- [x] Iframe w wiadomości chatowej (max width: 320px, max height: 180px) — responsive container
-- [x] Click → pełny ekran (overlay) — fullscreen iframe overlay with close button
-- Plik: `src/Client/src/ui/ChatMedia.ts`
+- [x] Iframe in chat message (max width: 320px, max height: 180px) — responsive container
+- [x] Click → fullscreen (overlay) — fullscreen iframe overlay with close button
+- File: `src/Client/src/ui/ChatMedia.ts`
 
-### 6.2 Giphy Embed w chat
-- [x] Wykrywanie Giphy URL w wiadomościach (regex: giphy.com/gifs/...) — multiple Giphy URL patterns
-- [x] Auto-embed: thumbnail z Giphy API → iframe/wideo — direct GIF URL embed
-- [x] Format: `<img>` z GIF lub `<video>` z loop — img element with lazy loading
-- Plik: `src/Client/src/ui/ChatMedia.ts`
+### 6.2 Giphy Embed in Chat
+- [x] Giphy URL detection in messages (regex: giphy.com/gifs/...) — multiple Giphy URL patterns
+- [x] Auto-embed: thumbnail from Giphy API → iframe/video — direct GIF URL embed
+- [x] Format: `<img>` with GIF or `<video>` with loop — img element with lazy loading
+- File: `src/Client/src/ui/ChatMedia.ts`
 
 ### 6.3 Chat Media Panel
-- [x] Przycisk GIF w pasku chat (wybieracz Giphy) — parseMessage() auto-detects media
-- [x] Przycisk YouTube wklejanie linku — parseMessage() extracts video IDs
-- [x] Podgląd mediów inline w chacie — createMediaElements() renders thumbnails/embeds
-- Plik: `src/Client/src/ui/ChatMedia.ts`
+- [x] GIF button in chat bar (Giphy picker) — parseMessage() auto-detects media
+- [x] YouTube link paste button — parseMessage() extracts video IDs
+- [x] Inline media preview in chat — createMediaElements() renders thumbnails/embeds
+- File: `src/Client/src/ui/ChatMedia.ts`
 
 ---
 
-## Podsumowanie postępu
+## Progress Summary
 
-| Faza | Zrobione | Razem | % |
-|------|----------|-------|---|
+| Phase | Done | Total | % |
+|-------|------|-------|---|
 | 1.1 Environment | 7/7 | 7 | **100%** ✅ |
 | 1.2 Particles | 4/4 | 4 | **100%** ✅ |
 | 1.3 Flexi Prims | 3/3 | 3 | **100%** ✅ |
 | 1.4 Sound | 6/6 | 6 | **100%** ✅ |
-| Faza 1 | 20/20 | 20 | **100%** ✅ |
-| Faza 2 | 15/15 | 15 | **100%** ✅ |
-| Faza 3 | 18/18 | 18 | **100%** ✅ |
-| Faza 4 | 25/25 | 25 | **100%** ✅ |
-| Faza 5 | 14/14 | 14 | **100%** ✅ |
-| Faza 6 | 10/10 | 10 | **100%** ✅ |
-| **ŁĄCZNIE** | **102/102** | **102** | **100%** ✅ |
+| Phase 1 | 20/20 | 20 | **100%** ✅ |
+| Phase 2 | 15/15 | 15 | **100%** ✅ |
+| Phase 3 | 18/18 | 18 | **100%** ✅ |
+| Phase 4 | 25/25 | 25 | **100%** ✅ |
+| Phase 5 | 14/14 | 14 | **100%** ✅ |
+| Phase 6 | 10/10 | 10 | **100%** ✅ |
+| **TOTAL** | **102/102** | **102** | **100%** ✅ |
 
-## Priorytet realizacji
+## Implementation Priority
 
-**Kolejność**: Faza 1 → 2 → 3 → 4 → 5 → 6
+**Order**: Phase 1 → 2 → 3 → 4 → 5 → 6
 
-W każdej fazie:
-1. Implementuję feature
-2. Testuję (logi konsoli + wizualnie)
-3. Naprawiam bugi
-4. Dopiero przechodzę dalej
+In each phase:
+1. Implement feature
+2. Test (console logs + visual)
+3. Fix bugs
+4. Then move on
 
-**Następne do roboty**: FAZA 3 — Interakcja (3.1 Object Interaction)
+**Next up**: PHASE 3 — Interaction (3.1 Object Interaction)
 
-**Testy**: Każda zmiana sprawdzana przez:
-- Konsolę przeglądarki (F12)
-- Logi serwera
-- Wizualnie na drugim komputerze
-- Porównanie z Firestorm screenshotami
+**Testing**: Each change verified via:
+- Browser console (F12)
+- Server logs
+- Visual inspection on second machine
+- Comparison with Firestorm screenshots
 
-## Istniejące pliki (stan faktyczny)
+## Existing Files (actual state)
 
-### Client (TypeScript) — 3,926 linii
-| Plik | Linie | Opis |
-|------|-------|------|
+### Client (TypeScript) — 3,926+ lines
+| File | Lines | Description |
+|------|-------|-------------|
 | engine/Environment.ts | 690 | Sky shader, presets, Windlight, fog, water, day/night |
 | engine/SLMeshDecoder.ts | 676 | SL mesh format decoder |
 | main.ts | 453 | Entry point, scene init, UI wiring |
@@ -291,9 +288,9 @@ W każdej fazie:
 | ui/SnapshotTools.ts | 320 | Screenshot + TasiaFeed upload |
 | ui/ChatMedia.ts | 250 | YouTube/Giphy embed detection and rendering |
 
-### Server (C#) — 1,772 linii
-| Plik | Linie | Opis |
-|------|-------|------|
+### Server (C#) — 1,772 lines
+| File | Lines | Description |
+|------|-------|-------------|
 | Hubs/ViewerHub.cs | 545 | Main hub: object updates, environment, sound, chat |
 | Program.cs | 143 | Server bootstrap |
 | Services/GridConnectionService.cs | 137 | OpenMetaverse grid connection |
