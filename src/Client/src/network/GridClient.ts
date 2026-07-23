@@ -91,7 +91,7 @@ export class GridClient {
 
   /** Heavy initialization — call after constructor, yields between each object */
   async init(): Promise<void> {
-    const y = () => new Promise<void>(r => setTimeout(r, 0));
+    const y = () => new Promise<void>(r => setTimeout(r, 50));
     const log = (msg: string) => { console.log('[Grid]', msg); this.onChatMessage?.('System', msg); };
 
     log('Loading material loader...');
