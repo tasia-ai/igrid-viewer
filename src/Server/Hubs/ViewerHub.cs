@@ -34,6 +34,16 @@ public class ViewerHub : Hub
     public async Task ConnectAvatar(int avatarId, string? gridUrl = null, string? startLocation = null, string? startRegion = null)
     {
         Console.WriteLine($"[ViewerHub] ConnectAvatar: avatarId={avatarId}, grid={gridUrl ?? "default"}, location={startLocation ?? "home"}");
+
+        // Disconnect old session first to avoid "already logged in" error
+        var oldSession = _grid.GetUserSessions(UserId).FirstOrDefault();
+        if (oldSession != null)
+        {
+            Console.WriteLine($"[ViewerHub] Disconnecting old session for avatar {oldSession.AvatarId}");
+            await _grid.DisconnectAvatarAsync(oldSession.AvatarId);
+            await Task.Delay(2000); // Give grid time to process disconnect
+        }
+
         var session = await _grid.ConnectAvatarAsync(UserId, avatarId, gridUrl);
         if (session == null) { await Clients.Caller.SendAsync("Error", "Failed to connect avatar"); return; }
 
