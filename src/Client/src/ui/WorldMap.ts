@@ -121,7 +121,8 @@ export class WorldMap {
     this.panel.appendChild(status);
 
     document.body.appendChild(this.panel);
-    this.draw();
+    // Don't draw in constructor — defer until first show
+    requestAnimationFrame(() => this.draw());
   }
 
   hide(): void {

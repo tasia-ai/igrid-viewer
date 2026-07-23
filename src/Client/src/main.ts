@@ -538,19 +538,19 @@ toolbar.querySelectorAll('.tool-btn').forEach(btn => {
     if (!gridClient) return;
     const tool = (btn as HTMLElement).dataset.tool;
     switch (tool) {
-      case 'search': gridClient.searchPanel.toggle(); break;
-      case 'inventory': gridClient.inventoryPanel.toggle(); break;
-      case 'build': gridClient.buildTools.toggle(); break;
-      case 'land': gridClient.landTools.toggle(); break;
-      case 'map': gridClient.worldMap.toggle(); break;
+      case 'search': gridClient.ensureSearchPanel().toggle(); break;
+      case 'inventory': gridClient.ensureInventoryPanel().toggle(); break;
+      case 'build': gridClient.ensureBuildTools().toggle(); break;
+      case 'land': gridClient.ensureLandTools().toggle(); break;
+      case 'map': gridClient.ensureWorldMap().toggle(); break;
       case 'profile': gridClient.profilePanel.toggle(); break;
       case 'groups': gridClient.groupPanel.toggle(); break;
-      case 'appearance': gridClient.appearanceEditor.toggle(); break;
-      case 'script': gridClient.scriptEditor.toggle(); break;
-      case 'notecard': gridClient.notecardEditor.toggle(); break;
-      case 'upload': gridClient.uploadTools.toggle(); break;
-      case 'snapshot': gridClient.snapshotTools.toggle(); break;
-      case 'voice': gridClient.voiceChat.toggleSettings(); break;
+      case 'appearance': gridClient.ensureAppearanceEditor().toggle(); break;
+      case 'script': gridClient.ensureScriptEditor().toggle(); break;
+      case 'notecard': gridClient.ensureNotecardEditor().toggle(); break;
+      case 'upload': gridClient.ensureUploadTools().toggle(); break;
+      case 'snapshot': gridClient.ensureSnapshotTools().toggle(); break;
+      case 'voice': gridClient.ensureVoiceChat().toggleSettings(); break;
     }
   });
 });
@@ -562,30 +562,30 @@ document.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
   switch (e.key) {
     case 'Escape':
-      gridClient.searchPanel.hide?.();
-      gridClient.inventoryPanel.hide?.();
-      gridClient.buildTools.toggle?.();
-      gridClient.landTools.hide?.();
-      gridClient.worldMap.hide?.();
+      gridClient.ensureSearchPanel().hide?.();
+      gridClient.ensureInventoryPanel().hide?.();
+      gridClient.ensureBuildTools().toggle?.();
+      gridClient.ensureLandTools().hide?.();
+      gridClient.ensureWorldMap().hide?.();
       gridClient.profilePanel.hide?.();
       gridClient.groupPanel.hide?.();
-      gridClient.appearanceEditor.hide?.();
-      gridClient.scriptEditor.hide?.();
-      gridClient.notecardEditor.hide?.();
-      gridClient.uploadTools.hide?.();
-      gridClient.snapshotTools.hide?.();
-      gridClient.voiceChat.toggleSettings?.(); gridClient.voiceChat.toggleSettings?.();
+      gridClient.ensureAppearanceEditor().hide?.();
+      gridClient.ensureScriptEditor().hide?.();
+      gridClient.ensureNotecardEditor().hide?.();
+      gridClient.ensureUploadTools().hide?.();
+      gridClient.ensureSnapshotTools().hide?.();
+      gridClient.ensureVoiceChat().toggleSettings?.(); gridClient.ensureVoiceChat().toggleSettings?.();
       break;
-    case 'i': if (!e.ctrlKey && !e.metaKey) { gridClient.inventoryPanel.toggle(); e.preventDefault(); } break;
-    case 'b': gridClient.buildTools.toggle(); e.preventDefault(); break;
-    case 'm': gridClient.worldMap.toggle(); e.preventDefault(); break;
+    case 'i': if (!e.ctrlKey && !e.metaKey) { gridClient.ensureInventoryPanel().toggle(); e.preventDefault(); } break;
+    case 'b': gridClient.ensureBuildTools().toggle(); e.preventDefault(); break;
+    case 'm': gridClient.ensureWorldMap().toggle(); e.preventDefault(); break;
     case 'p': gridClient.profilePanel.toggle(); e.preventDefault(); break;
     case 'g': gridClient.groupPanel.toggle(); e.preventDefault(); break;
-    case 'a': gridClient.appearanceEditor.toggle(); e.preventDefault(); break;
-    case 'u': gridClient.uploadTools.toggle(); e.preventDefault(); break;
-    case 'F3': gridClient.searchPanel.toggle(); e.preventDefault(); break;
-    case 'F5': gridClient.scriptEditor.toggle(); e.preventDefault(); break;
-    case 'F12': gridClient.snapshotTools.toggle(); e.preventDefault(); break;
+    case 'a': gridClient.ensureAppearanceEditor().toggle(); e.preventDefault(); break;
+    case 'u': gridClient.ensureUploadTools().toggle(); e.preventDefault(); break;
+    case 'F3': gridClient.ensureSearchPanel().toggle(); e.preventDefault(); break;
+    case 'F5': gridClient.ensureScriptEditor().toggle(); e.preventDefault(); break;
+    case 'F12': gridClient.ensureSnapshotTools().toggle(); e.preventDefault(); break;
   }
 });
 
@@ -593,8 +593,9 @@ document.addEventListener('keydown', (e) => {
 // Show voice status dot once connected
 // (initialized after avatar connects)
 const voiceObserver = new MutationObserver(() => {
-  if (gridClient?.voiceChat && !document.getElementById('voice-status')) {
-    gridClient.voiceChat.createStatusIndicator(document.body);
+  if (gridClient && !document.getElementById('voice-status')) {
+    const vc = gridClient.voiceChat;
+    if (vc) vc.createStatusIndicator(document.body);
   }
 });
 voiceObserver.observe(document.body, { childList: true, subtree: true });

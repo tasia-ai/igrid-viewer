@@ -113,71 +113,28 @@ export class GridClient {
     log('Loading UI panels...');
     this.profilePanel = new ProfilePanel();
     this.groupPanel = new GroupPanel();
-    await y();
-
     this.interactionManager = new InteractionManager(this.sceneManager.scene, this.sceneManager.camera);
-    this.inventoryPanel = new InventoryPanel({
-      onAction: (action, target) => this.handleInventoryAction(action, target),
-    });
     await y();
 
-    this.appearanceEditor = new AppearanceEditor({
-      onParamChange: (paramId, value) => this.connection?.invoke('SetVisualParam', paramId, value),
-      onBake: () => this.connection?.invoke('BakeAppearance'),
-    });
-    this.hudRenderer = new HUDRenderer(this.sceneManager.scene, this.sceneManager.renderer);
-    await y();
-
-    log('Loading tools...');
-    this.searchPanel = new SearchPanel({
-      onSearch: (category, query) => this.handleSearch(category, query),
-      onResultClick: (result) => this.handleSearchResultClick(result),
-    });
-    this.mediaManager = new MediaManager();
-    await y();
-
-    this.buildTools = new BuildTools(this.sceneManager.scene, this.sceneManager.camera, this.sceneManager.renderer);
-    this.buildTools.setCallbacks({
-      onEditProperty: (objectId, property, value) => this.connection?.invoke('SetObjectProperty', objectId, property, value),
-    });
-    await y();
-
-    log('Loading editors...');
-    this.landTools = new LandTools({
-      onAction: (action, data) => this.connection?.invoke('LandAction', action, data),
-    });
-    this.worldMap = new WorldMap({
-      onTeleport: (regionId, _x, _y) => this.teleport(regionId),
-    });
-    await y();
-
-    this.notecardEditor = new NotecardEditor({
-      onSave: (id, content) => this.connection?.invoke('SaveNotecard', id, content),
-    });
-    this.snapshotTools = new SnapshotTools({
-      onCapture: (imageData, options) => this.handleSnapshot(imageData, options),
-    });
-    await y();
-
-    this.chatMedia = new ChatMedia();
-    this.scriptEditor = new ScriptEditor({
-      onSave: (id, content, mono) => this.connection?.invoke('UpdateScript', id, content, mono),
-      onCompile: (id, content) => this.connection?.invoke('UpdateScript', id, content, true),
-    });
-    await y();
-
-    this.uploadTools = new UploadTools({
-      onUpload: (data) => this.connection?.invoke('UploadAsset', data.type, data.name, data.description || ''),
-    });
-    this.voiceChat = new VoiceChat({
-      onToggle: (enabled) => console.log('[Voice]', enabled ? 'enabled' : 'disabled'),
-    });
+    // UI panels — create on first use (lazy) to avoid blocking
+    this.inventoryPanel = null as any;
+    this.appearanceEditor = null as any;
+    this.hudRenderer = null as any;
+    this.searchPanel = null as any;
+    this.mediaManager = null as any;
+    this.buildTools = null as any;
+    this.landTools = null as any;
+    this.worldMap = null as any;
+    this.notecardEditor = null as any;
+    this.snapshotTools = null as any;
+    this.chatMedia = null as any;
+    this.scriptEditor = null as any;
+    this.uploadTools = null as any;
+    this.voiceChat = null as any;
+    this.editWindow = null as any;
     await y();
 
     log('Loading engine...');
-    this.editWindow = new EditWindow({
-      onChange: (objectId, prop, value) => this.connection?.invoke('SetObjectProperty', objectId, prop, value),
-    });
     this.interactionManager.setCallback((result, type) => {
       this.handleInteraction(result, type);
     });
@@ -391,11 +348,11 @@ export class GridClient {
     });
 
     hub.on('InventoryRoot', (data: any) => {
-      this.inventoryPanel.setInventory(data);
+      this.ensureInventoryPanel().setInventory(data);
     });
 
     hub.on('FolderExpanded', (data: any) => {
-      this.inventoryPanel.expandFolder(data.folderId, data.folders, data.items);
+      this.ensureInventoryPanel().expandFolder(data.folderId, data.folders, data.items);
     });
 
     hub.on('SearchResults', (data: any) => {
@@ -410,7 +367,7 @@ export class GridClient {
         date: r.date,
         maturity: r.maturity,
       }));
-      this.searchPanel.setResults(results);
+      this.ensureSearchPanel().setResults(results);
     });
 
     hub.on('FlexibleUpdate', (data: any) => {
@@ -571,7 +528,7 @@ export class GridClient {
       regionName: 'Current Region',
       position: '0, 0, 0',
     };
-    this.snapshotTools.uploadToFeed(imageData, options, metadata).then((result) => {
+    this.ensureSnapshotTools().uploadToFeed(imageData, options, metadata).then((result) => {
       if (result.success) {
         console.log('[Snapshot] Uploaded:', result.postUrl);
       } else {
@@ -661,6 +618,137 @@ export class GridClient {
     await this.connection.invoke('StandUp');
   }
 
+  // ── Lazy panel factories (public so main.ts toolbar/keyboard can call them) ──
+
+  public ensureInventoryPanel(): InventoryPanel {
+    if (!this.inventoryPanel) {
+      this.inventoryPanel = new InventoryPanel({
+        onAction: (action, target) => this.handleInventoryAction(action, target),
+      });
+    }
+    return this.inventoryPanel;
+  }
+
+  public ensureAppearanceEditor(): AppearanceEditor {
+    if (!this.appearanceEditor) {
+      this.appearanceEditor = new AppearanceEditor({
+        onParamChange: (paramId, value) => this.connection?.invoke('SetVisualParam', paramId, value),
+        onBake: () => this.connection?.invoke('BakeAppearance'),
+      });
+    }
+    return this.appearanceEditor;
+  }
+
+  public ensureHUDRenderer(): HUDRenderer {
+    if (!this.hudRenderer) {
+      this.hudRenderer = new HUDRenderer(this.sceneManager.scene, this.sceneManager.renderer);
+    }
+    return this.hudRenderer;
+  }
+
+  public ensureSearchPanel(): SearchPanel {
+    if (!this.searchPanel) {
+      this.searchPanel = new SearchPanel({
+        onSearch: (category, query) => this.handleSearch(category, query),
+        onResultClick: (result) => this.handleSearchResultClick(result),
+      });
+    }
+    return this.searchPanel;
+  }
+
+  public ensureBuildTools(): BuildTools {
+    if (!this.buildTools) {
+      this.buildTools = new BuildTools(this.sceneManager.scene, this.sceneManager.camera, this.sceneManager.renderer);
+      this.buildTools.setCallbacks({
+        onEditProperty: (objectId, property, value) => this.connection?.invoke('SetObjectProperty', objectId, property, value),
+      });
+    }
+    return this.buildTools;
+  }
+
+  public ensureLandTools(): LandTools {
+    if (!this.landTools) {
+      this.landTools = new LandTools({
+        onAction: (action, data) => this.connection?.invoke('LandAction', action, data),
+      });
+    }
+    return this.landTools;
+  }
+
+  public ensureWorldMap(): WorldMap {
+    if (!this.worldMap) {
+      this.worldMap = new WorldMap({
+        onTeleport: (regionId, _x, _y) => this.teleport(regionId),
+      });
+    }
+    return this.worldMap;
+  }
+
+  public ensureNotecardEditor(): NotecardEditor {
+    if (!this.notecardEditor) {
+      this.notecardEditor = new NotecardEditor({
+        onSave: (id, content) => this.connection?.invoke('SaveNotecard', id, content),
+      });
+    }
+    return this.notecardEditor;
+  }
+
+  public ensureSnapshotTools(): SnapshotTools {
+    if (!this.snapshotTools) {
+      this.snapshotTools = new SnapshotTools({
+        onCapture: (imageData, options) => this.handleSnapshot(imageData, options),
+      });
+    }
+    return this.snapshotTools;
+  }
+
+  public ensureChatMedia(): ChatMedia {
+    if (!this.chatMedia) { this.chatMedia = new ChatMedia(); }
+    return this.chatMedia;
+  }
+
+  public ensureScriptEditor(): ScriptEditor {
+    if (!this.scriptEditor) {
+      this.scriptEditor = new ScriptEditor({
+        onSave: (id, content, mono) => this.connection?.invoke('UpdateScript', id, content, mono),
+        onCompile: (id, content) => this.connection?.invoke('UpdateScript', id, content, true),
+      });
+    }
+    return this.scriptEditor;
+  }
+
+  public ensureUploadTools(): UploadTools {
+    if (!this.uploadTools) {
+      this.uploadTools = new UploadTools({
+        onUpload: (data) => this.connection?.invoke('UploadAsset', data.type, data.name, data.description || ''),
+      });
+    }
+    return this.uploadTools;
+  }
+
+  public ensureVoiceChat(): VoiceChat {
+    if (!this.voiceChat) {
+      this.voiceChat = new VoiceChat({
+        onToggle: (enabled) => console.log('[Voice]', enabled ? 'enabled' : 'disabled'),
+      });
+    }
+    return this.voiceChat;
+  }
+
+  public ensureEditWindow(): EditWindow {
+    if (!this.editWindow) {
+      this.editWindow = new EditWindow({
+        onChange: (objectId, prop, value) => this.connection?.invoke('SetObjectProperty', objectId, prop, value),
+      });
+    }
+    return this.editWindow;
+  }
+
+  public ensureMediaManager(): MediaManager {
+    if (!this.mediaManager) { this.mediaManager = new MediaManager(); }
+    return this.mediaManager;
+  }
+
   /**
    * Disconnect from the server.
    */
@@ -673,21 +761,21 @@ export class GridClient {
     this.profilePanel.dispose();
     this.groupPanel.dispose();
     this.interactionManager.dispose();
-    this.inventoryPanel.dispose();
-    this.appearanceEditor.dispose();
-    this.hudRenderer.dispose();
-    this.searchPanel.dispose();
-    this.mediaManager.dispose();
-    this.buildTools.dispose();
-    this.landTools.dispose();
-    this.worldMap.dispose();
-    this.notecardEditor.dispose();
-    this.snapshotTools.dispose();
-    this.chatMedia.dispose();
-    this.scriptEditor.dispose();
-    this.uploadTools.dispose();
-    this.voiceChat.dispose();
-    this.editWindow.dispose();
+    this.inventoryPanel?.dispose();
+    this.appearanceEditor?.dispose();
+    this.hudRenderer?.dispose();
+    this.searchPanel?.dispose();
+    this.mediaManager?.dispose();
+    this.buildTools?.dispose();
+    this.landTools?.dispose();
+    this.worldMap?.dispose();
+    this.notecardEditor?.dispose();
+    this.snapshotTools?.dispose();
+    this.chatMedia?.dispose();
+    this.scriptEditor?.dispose();
+    this.uploadTools?.dispose();
+    this.voiceChat?.dispose();
+    this.editWindow?.dispose();
     this.materialLoader.dispose();
     if (this.hypergridConnection) {
       await this.hypergridConnection.stop();
