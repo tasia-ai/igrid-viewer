@@ -602,12 +602,41 @@ public class ViewerHub : Hub
         var userPassword = await GetUserPasswordAsync();
         try
         {
+            UUID targetUUID;
             if (Guid.TryParse(targetId, out var guid))
             {
-                session.Client.Self.InstantMessage(new UUID(guid), message);
-                var encryptedMsg = IMEncryption.Encrypt(message, userPassword, UserId);
-                try { _db.IMMessages.Add(new IMMessage { UserId = UserId, OtherId = targetId, OtherName = "", Message = encryptedMsg, FromMe = true, Timestamp = DateTime.UtcNow }); await _db.SaveChangesAsync(); } catch { }
+                targetUUID = new UUID(guid);
             }
+            else
+            {
+                // Try to find user by name search
+                var search = new DirectoryManager.DirPeopleQuery
+                {
+                    Query = targetId,
+                    QueryFlags = DirectoryManager.DirFlags.People,
+                    Page = 0,
+                    PageSize = 5
+                };
+                var results = await Task.Run(() => {
+                    var found = new System.Collections.Generic.List<DirectoryManager.AgentSearchResult>();
+                    session.Client.Directory.StartPeopleSearch(search, (replyData) =>
+                    {
+                        found.AddRange(replyData);
+                    });
+                    Thread.Sleep(2000);
+                    return found;
+                });
+                if (results.Count == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", $"User '{targetId}' not found");
+                    return;
+                }
+                targetUUID = results[0].AgentID;
+                Console.WriteLine($"[ViewerHub] Found user '{targetId}' -> {targetUUID}");
+            }
+            session.Client.Self.InstantMessage(targetUUID, message);
+            var encryptedMsg = IMEncryption.Encrypt(message, userPassword, UserId);
+            try { _db.IMMessages.Add(new IMMessage { UserId = UserId, OtherId = targetId, OtherName = "", Message = encryptedMsg, FromMe = true, Timestamp = DateTime.UtcNow }); await _db.SaveChangesAsync(); } catch { }
         }
         catch (Exception ex) { await Clients.Caller.SendAsync("Error", $"IM failed: {ex.Message}"); }
     }

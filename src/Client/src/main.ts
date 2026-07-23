@@ -392,6 +392,28 @@ chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shift
 async function sendChat() {
   const msg = chatInput.value.trim();
   if (!msg || !gridClient) return;
+
+  // Handle /im command: /im Username message here
+  if (msg.startsWith('/im ') || msg.startsWith('/IM ')) {
+    const parts = msg.slice(4).trim().split(/\s+/);
+    if (parts.length < 2) {
+      addChatMessage('System', 'Usage: /im Username message');
+      chatInput.value = '';
+      return;
+    }
+    // Take first word as target, rest as message (supports multi-word names)
+    const target = parts[0];
+    const imMsg = parts.slice(1).join(' ');
+    try {
+      await gridClient.sendIM(target, imMsg);
+      addChatMessage('System', `IM sent to ${target}: ${imMsg}`);
+    } catch (err) {
+      addChatMessage('System', `IM failed: ${(err as Error).message}`);
+    }
+    chatInput.value = '';
+    return;
+  }
+
   await gridClient.sendChat(msg);
   addChatMessage('You', msg);
   chatInput.value = '';
