@@ -609,29 +609,22 @@ public class ViewerHub : Hub
             }
             else
             {
-                // Try to find user by name search
-                var search = new DirectoryManager.DirPeopleQuery
+                // Search by name using DirectoryManager
+                var received = new ManualResetEventSlim(false);
+                var found = new List<OpenMetaverse.DirectoryManager.AgentSearchData>();
+                session.Client.Directory.DirPeopleReply += (queryId, e) =>
                 {
-                    Query = targetId,
-                    QueryFlags = DirectoryManager.DirFlags.People,
-                    Page = 0,
-                    PageSize = 5
+                    if (e.MatchedPeople != null) found.AddRange(e.MatchedPeople);
+                    received.Set();
                 };
-                var results = await Task.Run(() => {
-                    var found = new System.Collections.Generic.List<DirectoryManager.AgentSearchResult>();
-                    session.Client.Directory.StartPeopleSearch(search, (replyData) =>
-                    {
-                        found.AddRange(replyData);
-                    });
-                    Thread.Sleep(2000);
-                    return found;
-                });
-                if (results.Count == 0)
+                session.Client.Directory.StartPeopleSearch(targetId, 0);
+                received.Wait(TimeSpan.FromSeconds(5));
+                if (found.Count == 0)
                 {
                     await Clients.Caller.SendAsync("Error", $"User '{targetId}' not found");
                     return;
                 }
-                targetUUID = results[0].AgentID;
+                targetUUID = found[0].AgentID;
                 Console.WriteLine($"[ViewerHub] Found user '{targetId}' -> {targetUUID}");
             }
             session.Client.Self.InstantMessage(targetUUID, message);

@@ -218,7 +218,7 @@ function showWorldUI() {
 function hideWorldUI() {
   [topBar, cameraPanel, chatWindow, teleportBar].forEach(el => el.style.display = 'none');
   document.getElementById('right-panel')!.style.display = 'none';
-  document.getElementById('im-window')!.style.display = 'none';
+  document.getElementById('im-panel')!.style.display = 'none';
   document.getElementById('toolbar')!.style.display = 'none';
 }
 
@@ -446,11 +446,17 @@ teleportForm.addEventListener('submit', async (e) => {
 const friendsHeader = document.getElementById('friends-header')!;
 const friendsList = document.getElementById('friends-list')!;
 const onlineCount = document.getElementById('online-count')!;
-const imWindow = document.getElementById('im-window')!;
-const imTitle = document.getElementById('im-title')!;
-const imMessages = document.getElementById('im-messages')!;
-const imInput = document.getElementById('im-input') as HTMLInputElement;
-const imSend = document.getElementById('im-send') as HTMLButtonElement;
+
+// New Firestorm-style IM panel references
+const imPanel = document.getElementById('im-panel')!;
+const imPanelClose = document.getElementById('im-panel-close')!;
+const imSearchInput = document.getElementById('im-search-input') as HTMLInputElement;
+const imConvoList = document.getElementById('im-convo-list')!;
+const imChatTitle = document.getElementById('im-chat-title')!;
+const imChatMessages = document.getElementById('im-chat-messages')!;
+const imChatInput = document.getElementById('im-chat-input') as HTMLInputElement;
+const imChatSend = document.getElementById('im-chat-send') as HTMLButtonElement;
+const imChatClear = document.getElementById('im-chat-clear')!;
 
 interface Friend { id: string; name: string; online: boolean; }
 interface IMConvo { friendId: string; friendName: string; messages: { from: string; text: string; time: Date }[]; unread: number; }
@@ -462,7 +468,9 @@ let activeConvoId: string | null = null;
 friendsHeader.addEventListener('click', (e) => { e.stopPropagation(); friendsList.style.display = friendsList.style.display === 'none' ? 'block' : 'none'; });
 
 function renderFriends() {
+  const filter = imSearchInput.value.trim().toLowerCase();
   friendsList.innerHTML = '';
+  imConvoList.innerHTML = '';
   let online = 0;
   for (const f of friends.values()) {
     if (f.online) online++;
@@ -473,6 +481,18 @@ function renderFriends() {
     div.innerHTML = `${f.online ? '● ' : '○ '}${esc(f.name)}${unread > 0 ? `<span style="color:#ef5350;font-weight:bold;margin-left:4px">${unread}</span>` : ''}`;
     div.addEventListener('click', (e) => { e.stopPropagation(); switchIM(f.id, f.name); });
     friendsList.appendChild(div);
+
+    // IM panel sidebar
+    if (filter && !f.name.toLowerCase().includes(filter)) continue;
+    const item = document.createElement('div');
+    item.className = `im-convo-item${activeConvoId === f.id ? ' active' : ''}`;
+    item.innerHTML = `
+      <span class="im-status-dot ${f.online ? 'online' : 'offline'}"></span>
+      <span class="im-convo-name">${esc(f.name)}</span>
+      ${unread > 0 ? `<span class="im-unread-badge">${unread}</span>` : ''}
+    `;
+    item.addEventListener('click', () => switchIM(f.id, f.name));
+    imConvoList.appendChild(item);
   }
   onlineCount.textContent = String(online);
 }
@@ -482,48 +502,46 @@ function switchIM(friendId: string, friendName: string) {
   if (!convos.has(friendId)) convos.set(friendId, { friendId, friendName, messages: [], unread: 0 });
   const conv = convos.get(friendId)!;
   conv.unread = 0;
-  imTitle.textContent = friendName;
-  imWindow.style.display = 'block';
-  friendsList.style.display = 'none';
+  imChatTitle.textContent = friendName;
+  imPanel.style.display = 'flex';
   renderIMMessages(conv);
-  imInput.focus();
+  imChatInput.focus();
   renderFriends();
 }
 
 function renderIMMessages(conv: IMConvo) {
-  imMessages.innerHTML = '';
+  imChatMessages.innerHTML = '';
   for (const msg of conv.messages) {
     const time = msg.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const color = msg.from === 'You' ? '#6ab0ff' : '#8f8';
+    const isSent = msg.from === 'You';
     const line = document.createElement('div');
-    line.innerHTML = `<span style="color:#666;font-size:9px">${time}</span> <b style="color:${color}">${esc(msg.from)}:</b> <span style="color:#ddd">${esc(msg.text)}</span>`;
-    imMessages.appendChild(line);
+    line.className = `im-msg ${isSent ? 'sent' : 'received'}`;
+    line.innerHTML = `<span class="im-msg-time">${time}</span> <span class="im-msg-name">${esc(msg.from)}:</span> <span class="im-msg-text">${esc(msg.text)}</span>`;
+    imChatMessages.appendChild(line);
   }
-  imMessages.scrollTop = imMessages.scrollHeight;
+  imChatMessages.scrollTop = imChatMessages.scrollHeight;
 }
 
-imSend.addEventListener('click', async () => {
-  const msg = imInput.value.trim();
+imChatSend.addEventListener('click', async () => {
+  const msg = imChatInput.value.trim();
   if (!msg || !activeConvoId || !gridClient) return;
   const conv = convos.get(activeConvoId);
   if (!conv) return;
   try {
     await gridClient.sendIM(activeConvoId, msg);
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     conv.messages.push({ from: 'You', text: msg, time: new Date() });
-    const line = document.createElement('div');
-    line.innerHTML = `<span style="color:#666;font-size:9px">${time}</span> <b style="color:#6ab0ff">You:</b> <span style="color:#ddd">${esc(msg)}</span>`;
-    imMessages.appendChild(line);
-    imMessages.scrollTop = imMessages.scrollHeight;
-    imInput.value = '';
+    renderIMMessages(conv);
+    imChatInput.value = '';
   } catch (err) { console.error('IM error:', err); }
 });
 
-imInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); imSend.click(); } });
-// Close IM + clear
-document.getElementById('im-header')!.addEventListener('click', () => { imWindow.style.display = 'none'; activeConvoId = null; });
-document.getElementById('im-clear')!.addEventListener('click', async (e) => {
-  e.stopPropagation();
+imChatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); imChatSend.click(); } });
+
+// Close IM panel
+imPanelClose.addEventListener('click', () => { imPanel.style.display = 'none'; activeConvoId = null; });
+
+// Clear IM conversation
+imChatClear.addEventListener('click', async () => {
   if (!activeConvoId || !gridClient) return;
   if (!confirm('Clear this conversation?')) return;
   await gridClient.clearIMHistory(activeConvoId);
@@ -541,11 +559,7 @@ function addIMMessage(from: string, message: string, fromId?: string) {
   conv.messages.push({ from, text: message, time: new Date() });
   if (activeConvoId === senderId) {
     conv.unread = 0;
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const line = document.createElement('div');
-    line.innerHTML = `<span style="color:#666;font-size:9px">${time}</span> <b style="color:#8f8">${esc(from)}:</b> <span style="color:#ddd">${esc(message)}</span>`;
-    imMessages.appendChild(line);
-    imMessages.scrollTop = imMessages.scrollHeight;
+    renderIMMessages(conv);
   } else { conv.unread++; }
   addChatMessage(`[IM] ${from}`, message);
   renderFriends();
@@ -598,16 +612,14 @@ document.addEventListener('keydown', (e) => {
       gridClient.ensureSnapshotTools().hide?.();
       gridClient.ensureVoiceChat().toggleSettings?.(); gridClient.ensureVoiceChat().toggleSettings?.();
       break;
-    case 'i': if (!e.ctrlKey && !e.metaKey) { gridClient.ensureInventoryPanel().toggle(); e.preventDefault(); } break;
-    case 'b': gridClient.ensureBuildTools().toggle(); e.preventDefault(); break;
-    case 'm': gridClient.ensureWorldMap().toggle(); e.preventDefault(); break;
-    case 'p': gridClient.profilePanel.toggle(); e.preventDefault(); break;
-    case 'g': gridClient.groupPanel.toggle(); e.preventDefault(); break;
-    case 'a': gridClient.ensureAppearanceEditor().toggle(); e.preventDefault(); break;
-    case 'u': gridClient.ensureUploadTools().toggle(); e.preventDefault(); break;
-    case 'F3': gridClient.ensureSearchPanel().toggle(); e.preventDefault(); break;
-    case 'F5': gridClient.ensureScriptEditor().toggle(); e.preventDefault(); break;
-    case 'F12': gridClient.ensureSnapshotTools().toggle(); e.preventDefault(); break;
+  }
+});
+
+// Escape also closes the IM panel
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && imPanel.style.display === 'flex') {
+    imPanel.style.display = 'none';
+    activeConvoId = null;
   }
 });
 
