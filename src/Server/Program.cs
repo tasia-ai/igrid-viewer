@@ -57,7 +57,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // --- Services ---
-builder.Services.AddScoped<GridConnectionService>();
+builder.Services.AddSingleton<GridConnectionService>();
 builder.Services.AddScoped<AuthService>();
 
 // --- SignalR ---
