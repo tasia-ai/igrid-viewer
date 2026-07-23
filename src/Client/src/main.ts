@@ -70,11 +70,24 @@ toggleAuth.addEventListener('click', (e) => {
   isRegisterMode = !isRegisterMode;
   loginError.style.display = 'none';
   authBtn.textContent = isRegisterMode ? 'Register' : 'Login';
-  confirmPasswordInput.style.display = isRegisterMode ? 'block' : 'none';
+  document.getElementById('register-fields')!.style.display = isRegisterMode ? 'block' : 'none';
   confirmPasswordInput.required = isRegisterMode;
-  betaKeyInput.style.display = isRegisterMode ? 'block' : 'none';
   betaKeyInput.required = isRegisterMode;
   toggleAuth.textContent = isRegisterMode ? 'Already have an account? Login' : "Don't have an account? Register";
+});
+
+// Grid selector: show/hide custom grid URL
+const gridSelect = document.getElementById('grid-select') as HTMLSelectElement;
+const customGridField = document.getElementById('custom-grid-field')!;
+gridSelect.addEventListener('change', () => {
+  customGridField.style.display = gridSelect.value === 'custom' ? 'block' : 'none';
+});
+
+// Start location: show/hide region name field
+const startLocation = document.getElementById('start-location') as HTMLSelectElement;
+const regionField = document.getElementById('region-field')!;
+startLocation.addEventListener('change', () => {
+  regionField.style.display = startLocation.value === 'region' ? 'block' : 'none';
 });
 
 loginForm.addEventListener('submit', async (e) => {
@@ -96,7 +109,7 @@ loginForm.addEventListener('submit', async (e) => {
     const data = await res.json();
     if (isRegisterMode) {
       const lr = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
-      if (!lr.ok) { showError('Account created! Now login.'); isRegisterMode = false; authBtn.textContent = 'Login'; confirmPasswordInput.style.display = 'none'; betaKeyInput.style.display = 'none'; toggleAuth.textContent = "Don't have an account? Register"; return; }
+      if (!lr.ok) { showError('Account created! Now login.'); isRegisterMode = false; authBtn.textContent = 'Login'; document.getElementById('register-fields')!.style.display = 'none'; toggleAuth.textContent = "Don't have an account? Register"; return; }
       authToken = (await lr.json()).token;
     } else { authToken = data.token; }
 

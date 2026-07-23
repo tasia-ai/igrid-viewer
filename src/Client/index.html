@@ -29,6 +29,17 @@
     .login-warning { background:rgba(255,193,7,0.12); border:1px solid rgba(255,193,7,0.3); border-radius:5px; padding:6px 10px; margin-bottom:1rem; font-size:0.72rem; color:#ffc107; }
     .login-toggle { text-align:center; margin-top:0.8rem; }
     .login-toggle a { color:#6ab0ff; font-size:0.8rem; text-decoration:none; }
+    /* Firestorm-style login */
+    .login-header { text-align:center; margin-bottom:1.5rem; }
+    .login-logo { font-size:2rem; color:#6ab0ff; font-weight:700; letter-spacing:3px; }
+    .login-subtitle { font-size:0.75rem; color:#556; letter-spacing:2px; text-transform:uppercase; margin-top:4px; }
+    .login-field { margin-bottom:0.7rem; }
+    .login-field label { display:block; font-size:0.75rem; color:#8899aa; margin-bottom:3px; text-transform:uppercase; letter-spacing:0.5px; }
+    .login-field select { width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:white; padding:6px 8px; border-radius:4px; font-size:0.85rem; appearance:none; cursor:pointer; }
+    .login-field select option { background:#1a2030; color:white; }
+    .login-submit { margin-top:0.8rem; padding:10px; font-size:1rem; font-weight:600; letter-spacing:1px; background:linear-gradient(135deg, #3a7bd5, #6ab0ff); border:none; border-radius:6px; cursor:pointer; transition:all 0.2s; }
+    .login-submit:hover { background:linear-gradient(135deg, #2a6bc5, #5aa0ef); transform:translateY(-1px); box-shadow:0 4px 12px rgba(58,123,213,0.3); }
+    #login-panel { min-width:360px; }
 
     /* === AVATAR PANEL === */
     #avatar-panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(20,30,50,0.95); padding:1.5rem; border-radius:10px; min-width:320px; border:1px solid rgba(100,160,220,0.3); z-index:100; }
@@ -173,14 +184,65 @@
 
   <!-- LOGIN -->
   <div id="login-panel">
-    <h2>✦ I-Grid ✦</h2>
-    <div class="login-warning">⚠ This account is <b>only for the web viewer</b>. Do NOT use your grid password!</div>
+    <div class="login-header">
+      <div class="login-logo">✦ I-Grid ✦</div>
+      <div class="login-subtitle">Web Viewer</div>
+    </div>
     <form id="login-form">
-      <input id="username" class="form-control" placeholder="Username" required>
-      <input id="password" type="password" class="form-control" placeholder="Password" required>
-      <input id="confirm-password" type="password" class="form-control" placeholder="Confirm password" style="display:none">
-      <input id="beta-key" class="form-control" placeholder="Beta key" style="display:none">
-      <button type="submit" class="btn btn-primary w-100 mt-2" id="auth-btn">Login</button>
+      <!-- Grid Selector -->
+      <div class="login-field">
+        <label>Grid</label>
+        <select id="grid-select" class="form-control">
+          <option value="i.let-us.cyou">I-Grid (i.let-us.cyou)</option>
+          <option value="osgrid.org">OSGrid (osgrid.org)</option>
+          <option value="secondlife.com">Second Life (secondlife.com)</option>
+          <option value="custom">Custom grid...</option>
+        </select>
+      </div>
+      <div class="login-field" id="custom-grid-field" style="display:none">
+        <label>Grid URL</label>
+        <input id="custom-grid-url" class="form-control" placeholder="https://grid.example.com:8002/">
+      </div>
+      
+      <!-- Start Location -->
+      <div class="login-field">
+        <label>Start Location</label>
+        <select id="start-location" class="form-control">
+          <option value="home">My Home</option>
+          <option value="last">Last Location</option>
+          <option value="region">Specific Region...</option>
+        </select>
+      </div>
+      <div class="login-field" id="region-field" style="display:none">
+        <label>Region Name</label>
+        <input id="start-region" class="form-control" placeholder="Region Name">
+      </div>
+
+      <!-- Credentials -->
+      <div class="login-field">
+        <label>Username</label>
+        <input id="username" class="form-control" placeholder="First Last" required>
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <input id="password" type="password" class="form-control" placeholder="Password" required>
+      </div>
+
+      <!-- Register fields (hidden by default) -->
+      <div id="register-fields" style="display:none">
+        <div class="login-field">
+          <label>Confirm Password</label>
+          <input id="confirm-password" type="password" class="form-control" placeholder="Confirm password">
+        </div>
+        <div class="login-field">
+          <label>Beta Key</label>
+          <input id="beta-key" class="form-control" placeholder="Enter beta key">
+        </div>
+      </div>
+
+      <div class="login-warning">⚠ This account is <b>only for the web viewer</b>. Do NOT use your main grid password!</div>
+      
+      <button type="submit" class="btn btn-primary w-100 login-submit" id="auth-btn">Login</button>
       <div id="login-error" style="color:#ef5350;font-size:0.8rem;margin-top:4px;display:none"></div>
       <div class="login-toggle"><a href="#" id="toggle-auth">Don't have an account? Register</a></div>
     </form>
