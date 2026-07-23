@@ -244,6 +244,7 @@ connectBtn.addEventListener('click', async () => {
     addChatMessage('System', 'Initializing viewer...');
     sceneManager.animate((delta) => {
       gridClient?.camera?.update(delta);
+      gridClient?.soundManager?.setMuted(!!(window as any)._muted);
       gridClient?.particleManager?.update(delta);
       gridClient?.flexibleRenderer?.update(delta);
       gridClient?.animationSystem?.update(delta);

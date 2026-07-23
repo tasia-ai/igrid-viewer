@@ -368,6 +368,12 @@ export class SoundManager {
   /**
    * Dispose of the entire audio system. Call on page unload or disconnect.
    */
+  setMuted(muted: boolean): void {
+    if (this.masterGain) {
+      this.masterGain.gain.setValueAtTime(muted ? 0 : 1, this.ctx?.currentTime ?? 0);
+    }
+  }
+
   dispose(): void {
     this.stopAll();
     this.bufferCache.clear();
